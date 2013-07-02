@@ -2,3 +2,4 @@ numpy
 pandas
 ta-lib
 matplotlib
+-e git://github.com/dp0h/marketdata.git#egg=marketdata
