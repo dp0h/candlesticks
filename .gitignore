@@ -37,3 +37,9 @@ nosetests.xml
 # virtualevn
 venv/
 
+# sublime files
+*.sublime-workspace
+*.sublime-project
+
+# sqlite db files
+*.db
