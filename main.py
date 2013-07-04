@@ -4,6 +4,7 @@
 '''
 from __future__ import print_function
 
+from collections import namedtuple
 from datetime import datetime
 import numpy as np
 from marketdata import symbol, schema, update, access
@@ -28,9 +29,12 @@ def init_db(symbols, from_date, to_date):
     update.update_marketdata(from_date, to_date)
 
 
+MktDataItem = namedtuple('MktDataItem', ['date', 'open', 'high', 'low', 'close'])
+
+
 def to_talib_format(mdata):
     ''' Converts market daata to talib format '''
-    return (np.array([datetime(x.year, x.month, x.day) for x in mdata.index]), np.array([float(x) for x in mdata[0]]), np.array([float(x) for x in mdata[1]]), np.array([float(x) for x in mdata[2]]), np.array([float(x) for x in mdata[3]]))
+    return MktDataItem(np.array([datetime(x.year, x.month, x.day) for x in mdata.index]), np.array([float(x) for x in mdata[0]]), np.array([float(x) for x in mdata[1]]), np.array([float(x) for x in mdata[2]]), np.array([float(x) for x in mdata[3]]))
 
 
 def find_candlestick_patterns(dates, open, high, low, close):
@@ -62,6 +66,7 @@ def main(fname, from_date, to_date):
     #palg = [x for x in talib.get_functions() if 'CDL' in x]
     palg = ['CDLTHRUSTING']  # TEMP
     for a in palg:
+        # TODO: put aopen, ahigh, ..., to separate struct
         cnt = 0
         aopen = [0] * 10
         ahigh = [0] * 10
@@ -70,22 +75,22 @@ def main(fname, from_date, to_date):
 
         for s in symbols:
             f = getattr(talib, a)
-            res = f(mdata[s][1], mdata[s][2], mdata[s][3], mdata[s][4])
+            res = f(mdata[s].open, mdata[s].high, mdata[s].low, mdata[s].close)
             res = list(res)
             #dates = [mdata[s][0][idx] for idx, val in enumerate(res) if val != 0]
             for x in (idx for idx, val in enumerate(res) if val != 0):
-                open = mdata[s][1][x]
+                open = mdata[s].open[x]
                 cnt += 1
                 for i in range(10):
-                    aopen[i] = mdata[s][1][x + i]/open
-                    ahigh[i] = mdata[s][2][x + i]/open
-                    alow[i] = mdata[s][3][x + i]/open
-                    aclose[i] = mdata[s][4][x + i]/open
+                    aopen[i] += mdata[s].open[x + i]/open
+                    ahigh[i] += mdata[s].high[x + i]/open
+                    alow[i] += mdata[s].low[x + i]/open
+                    aclose[i] += mdata[s].close[x + i]/open
         for x in range(10):
-            aopen[i] /= cnt
-            ahigh[i] /= cnt
-            alow[i] /= cnt
-            aclose[i] /= cnt
+            aopen[x] /= cnt
+            ahigh[x] /= cnt
+            alow[x] /= cnt
+            aclose[x] /= cnt
         print(aopen)
         print(ahigh)
         print(alow)
