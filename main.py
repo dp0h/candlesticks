@@ -4,12 +4,36 @@
 '''
 from __future__ import print_function
 
-from collections import namedtuple
-from copy import deepcopy
 from datetime import datetime
 import numpy as np
 from marketdata import symbol, schema, update, access
 import talib
+import functools
+
+
+def memoized(func):
+    '''Decorator that caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned, and
+    not re-evaluated.'''
+    cache = {}
+
+    @functools.wraps(func)
+    def memoizer(*args, **kwargs):
+        keywords = tuple(sorted(kwargs.iteritems()))
+        key = (args, keywords)
+        try:
+            return cache[key]
+        except KeyError:
+            value = func(*args, **kwargs)
+            cache[key] = value
+            return value
+        except TypeError:
+            # uncachable -- for instance, passing a list as an argument.
+            # Better to not cache than to blow up entirely.
+            return func(*args, **kwargs)
+
+    memoizer.cache = cache
+    return memoizer
 
 
 def check_db():
@@ -29,23 +53,15 @@ def init_db(symbols, from_date, to_date):
     symbol.add_symbols(symbols)
     update.update_marketdata(from_date, to_date)
 
-MktTypeNames = ['open', 'high', 'low', 'close']
-
-MktItem = namedtuple('MktItem', ['date'] + MktTypeNames)
-
-
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    return type('Enum', (), enums)
-
-MktType = enum(*MktTypeNames)
+MktTypes = ['open', 'high', 'low', 'close']
 
 
 class AverageMove(object):
+    ''' Class for calculating normalized average values '''
     def __init__(self, size):
-        val = [(0, 0)] * size
-        self.__dict = {MktType.open: deepcopy(val), MktType.high: deepcopy(val),
-                       MktType.low: deepcopy(val), MktType.close: deepcopy(val)}
+        self.__dict = {}
+        for x in MktTypes:
+            self.__dict[x] = [(0, 0)] * size
 
     def add(self, type, idx, relative_val, val):
         self.__dict[type][idx] = (self.__dict[type][idx][0] + float(val)/relative_val, self.__dict[type][idx][1] + 1)
@@ -56,21 +72,15 @@ class AverageMove(object):
 
 def to_talib_format(mdata):
     ''' Converts market daata to talib format '''
-    return MktItem(np.array([datetime(x.year, x.month, x.day) for x in mdata.index]), np.array([float(x) for x in mdata[0]]), np.array([float(x) for x in mdata[1]]), np.array([float(x) for x in mdata[2]]), np.array([float(x) for x in mdata[3]]))
+    res = {'date': np.array([datetime(x.year, x.month, x.day) for x in mdata.index])}
+    for (idx, val) in enumerate(MktTypes):
+        res[val] = np.array([float(x) for x in mdata[idx]])
+    return res
 
 
-def find_candlestick_patterns(dates, open, high, low, close):
-    ''' Tries to recognize different candlestick patterns for specified marketdata '''
-    palg = [x for x in talib.get_functions() if 'CDL' in x]
-    for a in palg:
-        f = getattr(talib, a)
-        res = f(open, high, low, close)
-        res = list(res)
-        if len([x for x in res if x != 0]) > 0:
-            print(a)
-            for idx, val in enumerate(res):
-                if val != 0:
-                    print('%s: %s' % (str(dates[idx]).split(' ')[0], val))
+@memoized
+def get_mkt_data(symbol, from_date, to_date):
+    return to_talib_format(access.get_marketdata(symbol, from_date, to_date, [access.Column.Open, access.Column.High, access.Column.Low, access.Column.Close]))
 
 
 CONSIDERED_NDAYS = 10
@@ -83,33 +93,31 @@ def main(fname, from_date, to_date):
     if not check_db():
         init_db(symbols, from_date, to_date)
 
-    # TODO: put all market data in separate class where we have logic to retrieve anything with lazy logic + caching
-    mdata = {}
-    for s in symbols:
-        mdata[s] = to_talib_format(access.get_marketdata(s, from_date, to_date, [access.Column.Open, access.Column.High, access.Column.Low, access.Column.Close]))
-
+    avgs = {}
     #palg = [x for x in talib.get_functions() if 'CDL' in x]
     palg = ['CDLTHRUSTING']  # TEMP
     for a in palg:
-        avg = AverageMove(CONSIDERED_NDAYS)
-
-        #TODO: different results should be consideres separateley, since we coldn't consider 100 and -100 in one avg.
         for s in symbols:
+            mdata = get_mkt_data(s, from_date, to_date)
             f = getattr(talib, a)
-            res = f(mdata[s].open, mdata[s].high, mdata[s].low, mdata[s].close)
-            res = list(res)
-            for x in (idx for idx, val in enumerate(res) if val != 0):
-                open = mdata[s].open[x]
+            res = f(mdata['open'], mdata['high'], mdata['low'], mdata['close'])
+            for (idx, val) in ((idx, val) for idx, val in enumerate(res) if val != 0):
+                open = mdata['open'][idx]
                 for i in range(CONSIDERED_NDAYS):
-                    avg.add(MktType.open, i, open, mdata[s].open[x + i])
-                    avg.add(MktType.high, i, open, mdata[s].high[x + i])
-                    avg.add(MktType.low, i, open, mdata[s].low[x + i])
-                    avg.add(MktType.close, i, open, mdata[s].close[x + i])
-        print(avg.average(MktType.open))
-        print(avg.average(MktType.high))
-        print(avg.average(MktType.low))
-        print(avg.average(MktType.close))
-        # TODO: dates processing could be done using map-reduce, i.e. coungint average values
+                    for m in MktTypes:
+                        key = '%s:%d' % (a, val)
+                        if key not in avgs:
+                            avgs[key] = AverageMove(CONSIDERED_NDAYS)
+                        try:
+                            avgs[key].add(m, i, open, mdata[m][idx + i])
+                        except IndexError:
+                            pass
+
+    for k in avgs.keys():
+        print(key)
+        for x in MktTypes:
+            print(avgs[k].average(x))
+    # TODO: dates processing could be done using map-reduce, i.e. coungint average values
     # Show graph for all cases average case
 
 
