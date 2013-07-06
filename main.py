@@ -7,7 +7,7 @@ from __future__ import print_function
 from datetime import datetime
 import numpy as np
 from marketdata import symbol, schema, update, access
-from helpers import memoized, talib_candlestick_funcs, talib_call
+from helpers import memoized, talib_candlestick_funcs, talib_call, load_symbols
 
 
 def check_db():
@@ -43,7 +43,7 @@ class AverageMove(object):
         self.__dict[type][idx] = (acc, cnt)
 
     def average(self, type):
-        return [acc/cnt for (acc, cnt) in self.__dict[type]]
+        return [acc/cnt for (acc, cnt) in self.__dict[type] if cnt > 0]
 
     def cnt(self):
         return self.__dict['open'][0][1]
@@ -69,22 +69,29 @@ def get_mkt_data(symbol, from_date, to_date):
 CONSIDERED_NDAYS = 10
 
 
+def find_candlestick_patterns(cfunc, mdata):
+    res = talib_call(cfunc, mdata['open'], mdata['high'], mdata['low'], mdata['close'])
+    return ((idx, val) for idx, val in enumerate(res) if val != 0)
+
+
 def main(fname, from_date, to_date):
     # TODO: perhaps marketdata could be rewritten with use of MongoDb
-    symbols = np.loadtxt(fname, dtype='S10', comments='#', skiprows=0)
-    #symbols = ['BG.L']  # TEMP
+    #symbols = load_symbols(fname)
+    symbols = ['BG.L']  # TEMP
     if not check_db():
         init_db(symbols, from_date, to_date)
 
     avgs = {}
     #palg = talib_candlestick_funcs()
-    palg = ['CDLTHRUSTING']  # TEMP
+    #palg = ['CDLTHRUSTING']  # TEMP
+    palg = ['CDL3OUTSIDE']  # TEMP
+
     for a in palg:
         for s in symbols:
             mdata = get_mkt_data(s, from_date, to_date)
-            res = talib_call(a, mdata['open'], mdata['high'], mdata['low'], mdata['close'])
-            filt = ((idx, val) for idx, val in enumerate(res) if val != 0)  # TODO: not sure if we should use the same idx, but idx+1
-            for (idx, val) in filt:
+            res = find_candlestick_patterns(a, mdata)
+            # TODO: not sure if we should use the same idx, but idx+1
+            for (idx, val) in res:
                 open = mdata['open'][idx]
                 for i in range(min(CONSIDERED_NDAYS, len(mdata['open']) - idx)):
                     for m in MktTypes:
@@ -94,7 +101,7 @@ def main(fname, from_date, to_date):
                         avgs[key].add(m, i, open, mdata[m][idx + i])
 
     for k in avgs.keys():
-        print(key)
+        print(k)
         print(repr(avgs[k]))
     # TODO: dates processing could be done using map-reduce, i.e. coungint average values
     # Show graph for all cases average case

@@ -5,6 +5,7 @@ Helper functions
 
 import functools
 import talib
+import numpy
 
 
 def memoized(func):
@@ -39,3 +40,7 @@ def talib_candlestick_funcs():
 def talib_call(func, open, high, low, close):
     f = getattr(talib, func)
     return f(open, high, low, close)
+
+
+def load_symbols(fname):
+    return numpy.loadtxt(fname, dtype='S10', comments='#', skiprows=0)
