@@ -30,17 +30,21 @@ def init_db(symbols, from_date, to_date):
 MktTypes = ['open', 'high', 'low', 'close']
 
 
-class AverageMove(object):
+class AverageChange(object):
     ''' Class for calculating normalized average values '''
     def __init__(self, size):
         self.__dict = {}
         for x in MktTypes:
             self.__dict[x] = [(0, 0)] * size
 
-    def add(self, type, idx, relative_val, val):
+    def add_item(self, type, idx, relative_val, val):
         acc = self.__dict[type][idx][0] + float(val)/relative_val
         cnt = self.__dict[type][idx][1] + 1
         self.__dict[type][idx] = (acc, cnt)
+
+    def add(self, type, relative_val, vals):
+        for idx, val in enumerate(vals):
+            self.add_item(type, idx, relative_val, val)
 
     def average(self, type):
         return [acc/cnt for (acc, cnt) in self.__dict[type] if cnt > 0]
@@ -74,6 +78,19 @@ def find_candlestick_patterns(cfunc, mdata):
     return ((idx, val) for idx, val in enumerate(res) if val != 0)
 
 
+class CandlestickEvents(object):
+    ''' '''
+    def __init__(self, symbols):
+        self.__symbols = symbols
+
+    def __get_events(self):
+        pass
+    events = property(__get_events, None)
+
+    def __gex_xxx(sefl):
+        pass
+
+
 def main(fname, from_date, to_date):
     # TODO: perhaps marketdata could be rewritten with use of MongoDb
     symbols = load_symbols(fname)
@@ -89,17 +106,15 @@ def main(fname, from_date, to_date):
         for s in symbols:
             mdata = get_mkt_data(s, from_date, to_date)
             res = find_candlestick_patterns(a, mdata)
-            # TODO: actually we couldn't use idx, we need to start from idx+1
+
+            #xxx
             for (idx, val) in res:
-                if (idx+2 >= len(mdata['open'])):
-                    continue
-                open = mdata['open'][idx+1]
-                for i in range(min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))):
-                    for m in MktTypes:
-                        key = '%s:%d' % (a, val)
-                        if key not in avgs:
-                            avgs[key] = AverageMove(CONSIDERED_NDAYS)
-                        avgs[key].add(m, i, open, mdata[m][idx+1 + i])
+                open = mdata['open'][idx + 1] if idx + 1 < len(mdata['open']) else 0
+                for m in MktTypes:
+                    key = '%s:%d' % (a, val)
+                    if key not in avgs:
+                        avgs[key] = AverageChange(CONSIDERED_NDAYS)
+                    avgs[key].add(m, open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
 
     for k in avgs.keys():
         print(k)
