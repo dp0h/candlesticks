@@ -76,29 +76,30 @@ def find_candlestick_patterns(cfunc, mdata):
 
 def main(fname, from_date, to_date):
     # TODO: perhaps marketdata could be rewritten with use of MongoDb
-    #symbols = load_symbols(fname)
-    symbols = ['BG.L']  # TEMP
+    symbols = load_symbols(fname)
+    #symbols = ['BG.L']  # TEMP
     if not check_db():
         init_db(symbols, from_date, to_date)
 
     avgs = {}
-    #palg = talib_candlestick_funcs()
+    palg = talib_candlestick_funcs()
     #palg = ['CDLTHRUSTING']  # TEMP
-    palg = ['CDL3OUTSIDE']  # TEMP
 
     for a in palg:
         for s in symbols:
             mdata = get_mkt_data(s, from_date, to_date)
             res = find_candlestick_patterns(a, mdata)
-            # TODO: not sure if we should use the same idx, but idx+1
+            # TODO: actually we couldn't use idx, we need to start from idx+1
             for (idx, val) in res:
-                open = mdata['open'][idx]
-                for i in range(min(CONSIDERED_NDAYS, len(mdata['open']) - idx)):
+                if (idx+2 >= len(mdata['open'])):
+                    continue
+                open = mdata['open'][idx+1]
+                for i in range(min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))):
                     for m in MktTypes:
                         key = '%s:%d' % (a, val)
                         if key not in avgs:
                             avgs[key] = AverageMove(CONSIDERED_NDAYS)
-                        avgs[key].add(m, i, open, mdata[m][idx + i])
+                        avgs[key].add(m, i, open, mdata[m][idx+1 + i])
 
     for k in avgs.keys():
         print(k)
