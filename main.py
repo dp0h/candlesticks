@@ -78,17 +78,36 @@ def find_candlestick_patterns(cfunc, mdata):
     return ((idx, val) for idx, val in enumerate(res) if val != 0)
 
 
-class CandlestickEvents(object):
-    ''' '''
-    def __init__(self, symbols):
+class CandlestickPatternEvents(object):
+    ''' Class for finding candlestick pattern events and counting average changes. '''
+    def __init__(self, symbols, candlestick_funcitons):
         self.__symbols = symbols
+        self.__avgs = {}
+        self.__palg = candlestick_funcitons
 
     def __get_events(self):
         pass
     events = property(__get_events, None)
 
-    def __gex_xxx(sefl):
-        pass
+    def __get_average_changes(self):
+        for k in self.__avgs.keys():
+            yield (k, self.__avgs[k])
+    average_changes = property(__get_average_changes)
+
+    def find_events(self):
+        for a in self.__palg:
+            for s in self.__symbols:
+                mdata = get_mkt_data(s, from_date, to_date)
+                res = find_candlestick_patterns(a, mdata)
+
+                # to separate func
+                for (idx, val) in res:
+                    open = mdata['open'][idx + 1] if idx + 1 < len(mdata['open']) else 0
+                    for m in MktTypes:
+                        key = '%s:%d' % (a, val)
+                        if key not in self.__avgs:
+                            self.__avgs[key] = AverageChange(CONSIDERED_NDAYS)
+                        self.__avgs[key].add(m, open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
 
 
 def main(fname, from_date, to_date):
@@ -98,27 +117,15 @@ def main(fname, from_date, to_date):
     if not check_db():
         init_db(symbols, from_date, to_date)
 
-    avgs = {}
     palg = talib_candlestick_funcs()
     #palg = ['CDLTHRUSTING']  # TEMP
 
-    for a in palg:
-        for s in symbols:
-            mdata = get_mkt_data(s, from_date, to_date)
-            res = find_candlestick_patterns(a, mdata)
+    c = CandlestickPatternEvents(symbols, palg)
+    c.find_events()
 
-            #xxx
-            for (idx, val) in res:
-                open = mdata['open'][idx + 1] if idx + 1 < len(mdata['open']) else 0
-                for m in MktTypes:
-                    key = '%s:%d' % (a, val)
-                    if key not in avgs:
-                        avgs[key] = AverageChange(CONSIDERED_NDAYS)
-                    avgs[key].add(m, open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
-
-    for k in avgs.keys():
+    for (k, val) in c.average_changes:
         print(k)
-        print(repr(avgs[k]))
+        print(repr(val))
     # TODO: dates processing could be done using map-reduce, i.e. coungint average values
     # Show graph for all cases average case
 
