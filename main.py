@@ -94,7 +94,7 @@ class CandlestickPatternEvents(object):
             yield (k, self.__avgs[k])
     average_changes = property(__get_average_changes)
 
-    def find_events(self):
+    def __call__(self):
         for a in self.__palg:
             for s in self.__symbols:
                 mdata = get_mkt_data(s, from_date, to_date)
@@ -108,6 +108,7 @@ class CandlestickPatternEvents(object):
                         if key not in self.__avgs:
                             self.__avgs[key] = AverageChange(CONSIDERED_NDAYS)
                         self.__avgs[key].add(m, open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
+        return self
 
 
 def main(fname, from_date, to_date):
@@ -120,8 +121,7 @@ def main(fname, from_date, to_date):
     palg = talib_candlestick_funcs()
     #palg = ['CDLTHRUSTING']  # TEMP
 
-    c = CandlestickPatternEvents(symbols, palg)
-    c.find_events()
+    c = CandlestickPatternEvents(symbols, palg)()
 
     for (k, val) in c.average_changes:
         print(k)
