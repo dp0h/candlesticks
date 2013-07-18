@@ -6,14 +6,15 @@ from __future__ import print_function
 
 from datetime import datetime
 import numpy as np
-from marketdata import symbol, schema, update, access
+from marketdata import update, access
+from marketdata.symbols import Symbols
 from helpers import memoized, talib_candlestick_funcs, talib_call, load_symbols
 
 
 def check_db():
     ''' Checks if marketdata db is created '''
     try:
-        l = list(symbol.symbols())
+        l = list(Symbols().symbols())
         if len(l) > 0:
             return True
     except:
@@ -22,9 +23,8 @@ def check_db():
 
 def init_db(symbols, from_date, to_date):
     ''' Initializes marketdata db '''
-    schema.create()
-    schema.disable_warnings()
-    symbol.add_symbols(symbols)
+    print('Fetching marketdata')
+    Symbols().add(symbols)
     update.update_marketdata(from_date, to_date)
 
 MktTypes = ['open', 'high', 'low', 'close']
@@ -54,20 +54,23 @@ class AverageChange(object):
 
     def __repr__(self):
         val = ['%s: %s' % (x, str(self.average(x))) for x in MktTypes]
-        return 'Number of events: %d\n%s' % (self.cnt(), '\n'.join(val))
+        return '<AverageChange. Number of events: %d\n%s>' % (self.cnt(), '\n'.join(val))
 
 
 def to_talib_format(mdata):
     ''' Converts market daata to talib format '''
-    res = {'date': np.array([datetime(x.year, x.month, x.day) for x in mdata.index])}
-    for (idx, val) in enumerate(MktTypes):
-        res[val] = np.array([float(x) for x in mdata[idx]])
+    res = {}
+    for x in ['date'] + MktTypes:
+        res[x] = np.array([])
+    for md in mdata:
+        for x in ['date'] + MktTypes:
+            res[x] = np.append(res[x], md[x])
     return res
 
 
 @memoized
 def get_mkt_data(symbol, from_date, to_date):
-    return to_talib_format(access.get_marketdata(symbol, from_date, to_date, [access.Column.Open, access.Column.High, access.Column.Low, access.Column.Close]))
+    return to_talib_format(access.get_marketdata(symbol, from_date, to_date))
 
 
 CONSIDERED_NDAYS = 10
