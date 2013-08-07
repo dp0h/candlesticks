@@ -50,6 +50,9 @@ def load_symbols(fname):
 
 
 def show_candlestick(quotes):
+    '''
+    quotes should have the following format: [(date1, open1, close1, high1, low1), (date2, open2, ...), (...), ...]
+    '''
     mondays = WeekdayLocator(MONDAY)
     alldays = DayLocator()
     weekFormatter = DateFormatter('%b %d')
