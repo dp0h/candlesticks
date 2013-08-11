@@ -11,6 +11,7 @@ from matplotlib.finance import candlestick
 
 
 def talib_candlestick_funcs():
+    ''' Retrieves candlestick function names '''
     return [x for x in talib.get_functions() if 'CDL' in x]
 
 

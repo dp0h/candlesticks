@@ -3,7 +3,7 @@
 
 import unittest
 from test import test_support
-from main import AverageChange, find_candlestick_patterns
+from events import AverageChange, find_candlestick_patterns
 import numpy as np
 
 

@@ -43,3 +43,6 @@ venv/
 
 # sqlite db files
 *.db
+
+# pip temp directory
+src/
