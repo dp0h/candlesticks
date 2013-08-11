@@ -1,7 +1,7 @@
 candlesticks
 ============
 
-Candlestick pattern analysis tool 
+Candlestick pattern analysis and simulation tool
 
 # setup
 ```
