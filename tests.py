@@ -3,8 +3,11 @@
 
 import unittest
 from test import test_support
-from events import AverageChange, find_candlestick_patterns
 import numpy as np
+from datetime import datetime
+from events import AverageChange, CandlestickPatternEvents
+from mktdata import init_marketdata
+from helpers import talib_candlestick_funcs, find_candlestick_patterns
 
 
 class TestAverageChange(unittest.TestCase):
@@ -58,6 +61,24 @@ class TestFindCandlestickPatterns(unittest.TestCase):
         res = find_candlestick_patterns('CDL3OUTSIDE', mdata)
         self.assertEquals([(3, 100)], list(res))
 
+
+class EventsRegressionTest(unittest.TestCase):
+    def test_CandlestickPatternEvents(self):
+        from_date = datetime(2012, 1, 1)
+        to_date = datetime(2012, 1, 31)
+        symbols = ['ABF.L', 'ADM.L']
+        init_marketdata(symbols, from_date, to_date)
+
+        palg = talib_candlestick_funcs()
+
+        c = CandlestickPatternEvents(symbols, palg, from_date, to_date)()
+        changes = list(c.average_changes)
+        self.assertEquals(20, len(changes))
+        self.assertEquals('CDLSPINNINGTOP:100', changes[19][0])
+        self.assertEquals(4, changes[19][1].cnt())
+        self.assertAlmostEquals(1.02994350282, changes[19][1].average('open')[-1])
+
 if __name__ == '__main__':
     test_support.run_unittest(TestAverageChange)
     test_support.run_unittest(TestFindCandlestickPatterns)
+    test_support.run_unittest(EventsRegressionTest)

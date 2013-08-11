@@ -6,8 +6,8 @@ Candlestick events analyzer
 from __future__ import print_function
 
 from datetime import datetime
-from helpers import talib_candlestick_funcs, talib_call, load_symbols, show_candlestick, MktTypes, get_mkt_data
-from mktdata import init_marketdata
+from helpers import talib_candlestick_funcs, load_symbols, show_candlestick, find_candlestick_patterns
+from mktdata import MktTypes, init_marketdata, get_mkt_data
 
 
 class AverageChange(object):
@@ -40,17 +40,14 @@ class AverageChange(object):
 CONSIDERED_NDAYS = 10
 
 
-def find_candlestick_patterns(cfunc, mdata):
-    res = talib_call(cfunc, mdata['open'], mdata['high'], mdata['low'], mdata['close'])
-    return ((idx, val) for idx, val in enumerate(res) if val != 0)
-
-
 class CandlestickPatternEvents(object):
     ''' Class for finding candlestick pattern events and counting average changes. '''
-    def __init__(self, symbols, candlestick_funcitons):
+    def __init__(self, symbols, candlestick_funcitons, from_date, to_date):
         self._symbols = symbols
         self._avgs = {}
         self._palg = candlestick_funcitons
+        self._from_date = from_date
+        self._to_date = to_date
 
     def __get_average_changes(self):
         for k in self._avgs.keys():
@@ -68,7 +65,7 @@ class CandlestickPatternEvents(object):
 
     def __call__(self):
         for s in self._symbols:
-            mdata = get_mkt_data(s, from_date, to_date)
+            mdata = get_mkt_data(s, self._from_date, self._to_date)
             for a in self._palg:
                 res = find_candlestick_patterns(a, mdata)
                 self._process_patterns(res, mdata, a)
@@ -103,7 +100,7 @@ def main(fname, from_date, to_date):
 
     palg = talib_candlestick_funcs()
 
-    c = CandlestickPatternEvents(symbols, palg)()
+    c = CandlestickPatternEvents(symbols, palg, from_date, to_date)()
 
     diff_level = 0.02  # output patterns where up/down > diff_level
     min_cnt = 5  # output patterns with > min_cnt events

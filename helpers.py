@@ -6,10 +6,8 @@ Helper functions
 import talib
 import numpy as np
 import pylab as pl
-from functools32 import lru_cache
 from matplotlib.dates import DateFormatter, WeekdayLocator, DayLocator, MONDAY
 from matplotlib.finance import candlestick
-from mktdata import get_marketdata
 
 
 def talib_candlestick_funcs():
@@ -22,28 +20,13 @@ def talib_call(func, open, high, low, close):
     return f(open, high, low, close)
 
 
+def find_candlestick_patterns(cfunc, mdata):
+    res = talib_call(cfunc, mdata['open'], mdata['high'], mdata['low'], mdata['close'])
+    return ((idx, val) for idx, val in enumerate(res) if val != 0)
+
+
 def load_symbols(fname):
     return np.loadtxt(fname, dtype='S10', comments='#', skiprows=0)
-
-
-MktTypes = ['open', 'high', 'low', 'close']
-
-
-def to_talib_format(mdata):
-    ''' Converts market data to talib format '''
-    res = {}
-    for x in ['date'] + MktTypes:
-        res[x] = np.array([])
-    for md in mdata:
-        for x in ['date'] + MktTypes:
-            res[x] = np.append(res[x], md[x])
-    return res
-
-
-#TODO: need market data validation to exclude splits/dividents/corrupted data
-@lru_cache(maxsize=32)
-def get_mkt_data(symbol, from_date, to_date):
-    return to_talib_format(get_marketdata(symbol, from_date, to_date))
 
 
 def show_candlestick(quotes):
