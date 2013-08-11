@@ -6,74 +6,34 @@ Candlestick events analyzer
 from __future__ import print_function
 
 from datetime import datetime
-import numpy as np
-from functools32 import lru_cache
-from marketdata import update, access
-from marketdata.symbols import Symbols
-from helpers import talib_candlestick_funcs, talib_call, load_symbols, show_candlestick
-
-
-def check_db():
-    ''' Checks if marketdata db is created '''
-    try:
-        l = list(Symbols().symbols())
-        if len(l) > 0:
-            return True
-    except:
-        pass
-
-
-def init_db(symbols, from_date, to_date):
-    ''' Initializes marketdata db '''
-    print('Fetching marketdata')
-    Symbols().add(symbols)
-    update.update_marketdata(from_date, to_date)
-
-MktTypes = ['open', 'high', 'low', 'close']
+from helpers import talib_candlestick_funcs, talib_call, load_symbols, show_candlestick, check_db, init_db, MktTypes, get_mkt_data
 
 
 class AverageChange(object):
     ''' Class for calculating normalized average values '''
     def __init__(self, size):
-        self.__dict = {}
+        self._dict = {}
         for x in MktTypes:
-            self.__dict[x] = [(0, 0)] * size
+            self._dict[x] = [(0, 0)] * size
 
     def add_item(self, type, idx, relative_val, val):
-        acc = self.__dict[type][idx][0] + float(val)/relative_val
-        cnt = self.__dict[type][idx][1] + 1
-        self.__dict[type][idx] = (acc, cnt)
+        acc = self._dict[type][idx][0] + float(val)/relative_val
+        cnt = self._dict[type][idx][1] + 1
+        self._dict[type][idx] = (acc, cnt)
 
     def add(self, type, relative_val, vals):
         for idx, val in enumerate(vals):
             self.add_item(type, idx, relative_val, val)
 
     def average(self, type):
-        return [acc/cnt for (acc, cnt) in self.__dict[type] if cnt > 0]
+        return [acc/cnt for (acc, cnt) in self._dict[type] if cnt > 0]
 
     def cnt(self):
-        return self.__dict['open'][0][1]
+        return self._dict['open'][0][1]
 
     def __repr__(self):
         val = ['%s: %s' % (x, str(self.average(x))) for x in MktTypes]
         return '<AverageChange. Number of events: %d\n%s>' % (self.cnt(), '\n'.join(val))
-
-
-def to_talib_format(mdata):
-    ''' Converts market data to talib format '''
-    res = {}
-    for x in ['date'] + MktTypes:
-        res[x] = np.array([])
-    for md in mdata:
-        for x in ['date'] + MktTypes:
-            res[x] = np.append(res[x], md[x])
-    return res
-
-
-#TODO: need market data validation to exclude splits/dividents/corrupted data
-@lru_cache(maxsize=32)
-def get_mkt_data(symbol, from_date, to_date):
-    return to_talib_format(access.get_marketdata(symbol, from_date, to_date))
 
 
 CONSIDERED_NDAYS = 10
@@ -87,13 +47,13 @@ def find_candlestick_patterns(cfunc, mdata):
 class CandlestickPatternEvents(object):
     ''' Class for finding candlestick pattern events and counting average changes. '''
     def __init__(self, symbols, candlestick_funcitons):
-        self.__symbols = symbols
-        self.__avgs = {}
-        self.__palg = candlestick_funcitons
+        self._symbols = symbols
+        self._avgs = {}
+        self._palg = candlestick_funcitons
 
     def __get_average_changes(self):
-        for k in self.__avgs.keys():
-            yield (k, self.__avgs[k])
+        for k in self._avgs.keys():
+            yield (k, self._avgs[k])
     average_changes = property(__get_average_changes)
 
     def _process_patterns(self, res, mdata, alg):
@@ -101,14 +61,14 @@ class CandlestickPatternEvents(object):
             next_day_open = mdata['open'][idx + 1] if idx + 1 < len(mdata['open']) else 0
             for m in MktTypes:
                 key = '%s:%d' % (alg, val)
-                if key not in self.__avgs:
-                    self.__avgs[key] = AverageChange(CONSIDERED_NDAYS)
-                self.__avgs[key].add(m, next_day_open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
+                if key not in self._avgs:
+                    self._avgs[key] = AverageChange(CONSIDERED_NDAYS)
+                self._avgs[key].add(m, next_day_open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
 
     def __call__(self):
-        for s in self.__symbols:
+        for s in self._symbols:
             mdata = get_mkt_data(s, from_date, to_date)
-            for a in self.__palg:
+            for a in self._palg:
                 res = find_candlestick_patterns(a, mdata)
                 self._process_patterns(res, mdata, a)
         return self

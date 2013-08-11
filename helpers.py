@@ -4,10 +4,13 @@ Helper functions
 '''
 
 import talib
-import numpy
+import numpy as np
 import pylab as pl
+from functools32 import lru_cache
 from matplotlib.dates import DateFormatter, WeekdayLocator, DayLocator, MONDAY
 from matplotlib.finance import candlestick
+from marketdata import update, access
+from marketdata.symbols import Symbols
 
 
 def talib_candlestick_funcs():
@@ -21,7 +24,27 @@ def talib_call(func, open, high, low, close):
 
 
 def load_symbols(fname):
-    return numpy.loadtxt(fname, dtype='S10', comments='#', skiprows=0)
+    return np.loadtxt(fname, dtype='S10', comments='#', skiprows=0)
+
+
+MktTypes = ['open', 'high', 'low', 'close']
+
+
+def to_talib_format(mdata):
+    ''' Converts market data to talib format '''
+    res = {}
+    for x in ['date'] + MktTypes:
+        res[x] = np.array([])
+    for md in mdata:
+        for x in ['date'] + MktTypes:
+            res[x] = np.append(res[x], md[x])
+    return res
+
+
+#TODO: need market data validation to exclude splits/dividents/corrupted data
+@lru_cache(maxsize=32)
+def get_mkt_data(symbol, from_date, to_date):
+    return to_talib_format(access.get_marketdata(symbol, from_date, to_date))
 
 
 def show_candlestick(quotes):
@@ -45,3 +68,20 @@ def show_candlestick(quotes):
     pl.setp(pl.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
 
     pl.show()
+
+
+def check_db():
+    ''' Checks if marketdata db is created '''
+    try:
+        l = list(Symbols().symbols())
+        if len(l) > 0:
+            return True
+    except:
+        pass
+
+
+def init_db(symbols, from_date, to_date):
+    ''' Initializes marketdata db '''
+    print('Fetching marketdata')
+    Symbols().add(symbols)
+    update.update_marketdata(from_date, to_date)
