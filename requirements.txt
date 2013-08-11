@@ -2,4 +2,5 @@ numpy
 pandas
 ta-lib
 matplotlib
+functools32
 -e git://github.com/dp0h/marketdata.git#egg=marketdata

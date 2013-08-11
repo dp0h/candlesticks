@@ -4,12 +4,12 @@
 '''
 from __future__ import print_function
 
-import os
 from datetime import datetime
 import numpy as np
+from functools32 import lru_cache
 from marketdata import update, access
 from marketdata.symbols import Symbols
-from helpers import memoized, talib_candlestick_funcs, talib_call, load_symbols, show_candlestick
+from helpers import talib_candlestick_funcs, talib_call, load_symbols, show_candlestick
 
 
 def check_db():
@@ -69,9 +69,8 @@ def to_talib_format(mdata):
     return res
 
 
-#TODO: replace memoized with last res cache
 #TODO: need market data validation to exclude splits/dividents
-@memoized
+@lru_cache(maxsize=32)
 def get_mkt_data(symbol, from_date, to_date):
     return to_talib_format(access.get_marketdata(symbol, from_date, to_date))
 
@@ -102,9 +101,9 @@ class CandlestickPatternEvents(object):
 
     def __call__(self):
         # TODO: dates processing could be done using map-reduce, i.e. coungint average values
-        for a in self.__palg:
-            for s in self.__symbols:
-                mdata = get_mkt_data(s, from_date, to_date)
+        for s in self.__symbols:
+            mdata = get_mkt_data(s, from_date, to_date)
+            for a in self.__palg:
                 res = find_candlestick_patterns(a, mdata)
 
                 #TODO: extract func
