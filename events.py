@@ -6,7 +6,8 @@ Candlestick events analyzer
 from __future__ import print_function
 
 from datetime import datetime
-from helpers import talib_candlestick_funcs, talib_call, load_symbols, show_candlestick, check_db, init_db, MktTypes, get_mkt_data
+from helpers import talib_candlestick_funcs, talib_call, load_symbols, show_candlestick, MktTypes, get_mkt_data
+from mktdata import init_marketdata
 
 
 class AverageChange(object):
@@ -98,8 +99,7 @@ def output_results(average_changes, diff_level, min_cnt):
 
 def main(fname, from_date, to_date):
     symbols = load_symbols(fname)
-    if not check_db():
-        init_db(symbols, from_date, to_date)
+    init_marketdata(symbols, from_date, to_date)
 
     palg = talib_candlestick_funcs()
 

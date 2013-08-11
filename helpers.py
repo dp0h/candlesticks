@@ -9,8 +9,7 @@ import pylab as pl
 from functools32 import lru_cache
 from matplotlib.dates import DateFormatter, WeekdayLocator, DayLocator, MONDAY
 from matplotlib.finance import candlestick
-from marketdata import update, access
-from marketdata.symbols import Symbols
+from mktdata import get_marketdata
 
 
 def talib_candlestick_funcs():
@@ -44,7 +43,7 @@ def to_talib_format(mdata):
 #TODO: need market data validation to exclude splits/dividents/corrupted data
 @lru_cache(maxsize=32)
 def get_mkt_data(symbol, from_date, to_date):
-    return to_talib_format(access.get_marketdata(symbol, from_date, to_date))
+    return to_talib_format(get_marketdata(symbol, from_date, to_date))
 
 
 def show_candlestick(quotes):
@@ -68,20 +67,3 @@ def show_candlestick(quotes):
     pl.setp(pl.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
 
     pl.show()
-
-
-def check_db():
-    ''' Checks if marketdata db is created '''
-    try:
-        l = list(Symbols().symbols())
-        if len(l) > 0:
-            return True
-    except:
-        pass
-
-
-def init_db(symbols, from_date, to_date):
-    ''' Initializes marketdata db '''
-    print('Fetching marketdata')
-    Symbols().add(symbols)
-    update.update_marketdata(from_date, to_date)

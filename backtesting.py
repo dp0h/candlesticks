@@ -5,7 +5,7 @@
 from __future__ import print_function
 
 from datetime import datetime
-from helpers import load_symbols, check_db, init_db
+from helpers import load_symbols, check_db, init_db, get_mkt_data
 
 
 class StrategyRunner(object):
