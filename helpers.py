@@ -29,7 +29,7 @@ def load_symbols(fname):
     return np.loadtxt(fname, dtype='S10', comments='#', skiprows=0)
 
 
-def show_candlestick(quotes):
+def save_candlestick_chart(fname, quotes):
     '''
     quotes should have the following format: [(date1, open1, close1, high1, low1), (date2, open2, ...), (...), ...]
     '''
@@ -49,4 +49,4 @@ def show_candlestick(quotes):
     ax.autoscale_view()
     pl.setp(pl.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
 
-    pl.show()
+    pl.savefig(fname)

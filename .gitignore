@@ -46,3 +46,6 @@ venv/
 
 # pip temp directory
 src/
+
+# results directories
+results-*

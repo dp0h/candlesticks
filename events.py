@@ -5,8 +5,9 @@ Candlestick events analyzer
 '''
 from __future__ import print_function
 
+import os
 from datetime import datetime
-from helpers import talib_candlestick_funcs, load_symbols, show_candlestick, find_candlestick_patterns
+from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns
 from mktdata import MktTypes, init_marketdata, get_mkt_data
 
 
@@ -73,25 +74,32 @@ class CandlestickPatternEvents(object):
 
 
 def output_results(average_changes, diff_level, min_cnt):
-    #TODO: output results and graphs to files/html
+    now = datetime.now()
+    outpath = "./results-%d-%02d-%02d_%02d-%02d-%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
+    os.makedirs(outpath)
 
-    i = 0
-    for (k, val) in average_changes:
-        mn = mx = 1.0
-        for x in ['open', 'close']:
-            v = val.average(x)
-            mn = min(mn, min(v))
-            mx = max(mx, max(v))
-        if (mx > 1.0 + diff_level or mn < 1.0 - diff_level) and val.cnt() >= min_cnt:
-            print(k)
-            print(repr(val))
-            i += 1
-            val = [val.average(t) for t in [MktTypes[0], MktTypes[3], MktTypes[1], MktTypes[2]]]
-            days = [[x for x in range(len(val[0]))]]  # put fake dates
-            quotes = days + val
-            quotes = zip(*quotes)
-            show_candlestick(quotes)
-    print('Total: %d' % i)
+    with open(os.path.join(outpath, 'events.html'), 'w') as f:
+        i = 0
+        for (k, val) in average_changes:
+            mn = mx = 1.0
+            for x in ['open', 'close']:
+                v = val.average(x)
+                mn = min(mn, min(v))
+                mx = max(mx, max(v))
+            if (mx > 1.0 + diff_level or mn < 1.0 - diff_level) and val.cnt() >= min_cnt:
+                f.write('<h3>%s</h3>' % k)
+                f.write('<b>Number of events: %d</b><br/>' % val.cnt())
+                f.write('</br><code>%s</code>' % repr(val).replace('<', '&lt;').replace('>', '&gt;'))
+                i += 1
+                val = [val.average(t) for t in [MktTypes[0], MktTypes[3], MktTypes[1], MktTypes[2]]]
+                days = [[x for x in range(len(val[0]))]]  # put fake dates
+                quotes = days + val
+                quotes = zip(*quotes)
+                img_name = '%s.png' % k
+                save_candlestick_chart(os.path.join(outpath, img_name), quotes)
+                f.write('<img src="./%s"/>' % img_name)
+                f.write('<hr/>')
+        f.write('<b>Total: %d</b>' % i)
 
 
 def main(fname, from_date, to_date):
