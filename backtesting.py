@@ -9,33 +9,46 @@ from mktdata import init_marketdata, get_mkt_data
 from helpers import load_symbols, find_candlestick_patterns
 
 
+class MarketRules(object):
+    pass
+
+
 class StrategyRunner(object):
-    def __init__(self, pattern_alg, alg_value, side, hold_days, limit):
+    def __init__(self, pattern_alg, alg_value, hold_days):
         self._pattern_alg = pattern_alg
         self._alg_value = alg_value
-        self._side = side
+        #TODO: implemete buy/sell
+        #self._side = side
         self._hold_days = hold_days
-        self._limit = limit
+        #TODO: implemente limit transactions
+        #self._limit = limit
+        #TODO: closing should be based on bollinger bands (or sliding)
 
-        self._balance = 0
+        self.balance = 0
 
-    def _process_event(mdata_idx, mdata):
-        start_price = mdata['open'][mdata_idx + 1] if mdata_idx + 1 < len(mdata['open']) else 0
-        end_price = mdata['open'][mdata_idx + 1 + self._hold_days] if mdata_idx + 1 + self._hold_days < len(mdata['open']) else 0
-        low_price = mdata['low'][mdata_idx + 1:mdata_idx + 1 + self._hold_days]
-        high_price = mdata['high'][mdata_idx + 1:mdata_idx + 1 + self._hold_days]
-        if (self._side == 'buy'):
-            self._process_buy()
-        else:
-            self._process_sell()
+    def _process_event(self, mdata_idx, mdata):
+        #TODO: include transaction cost
+        buy_price = mdata['open'][mdata_idx + 1]
+        sell_price = mdata['open'][mdata_idx + 1 + self._hold_days]
+
+        #TMP assume we buy each time for 1000 (and 5 is txn cost)
+        self.balance -= 1005
+        cnt = 1000 / buy_price
+        profit = cnt * sell_price
+        self.balance += profit
+        if buy_price > 1000:
+            print('!')
 
     def __call__(self, symbols, from_date, to_date):
         for s in symbols:
             mdata = get_mkt_data(s, from_date, to_date)
-            for a in self.__palg:
-                res = find_candlestick_patterns(a, mdata)
-                for (idx, val) in res:
-                    self._process_event(idx, mdata)
+            res = find_candlestick_patterns(self._pattern_alg, mdata)
+            for (idx, val) in res:
+                if val == self._alg_value:
+                    try:
+                        self._process_event(idx, mdata)
+                    except IndexError:
+                        pass
         return self
 
 
@@ -44,12 +57,16 @@ def main(fname, from_date, to_date):
     init_marketdata(symbols, from_date, to_date)
 
     strategy_inputs = [
-        ('CDL3LINESTRIKE', -100, 'buy', 10, 1.5),
-        ('CDLMORNINGDOJISTAR', 100, 'buy', 7, 1.0)]
+        ('CDL3LINESTRIKE', -100, 9),
+        ('CDLMORNINGDOJISTAR', 100, 5),
+        ('CDL3LINESTRIKE', 100, 9),
+        ('CDLGAPSIDESIDEWHITE', -100, 9),
+        ('CDL3WHITESOLDIERS', 100, 8),
+        ('CDLINNECK', -100, 8)]
 
     for x in strategy_inputs:
         sr = StrategyRunner(*x)(symbols, from_date, to_date)
-        break
+        print(sr.balance)
 
 if __name__ == '__main__':
     from_date = datetime(2012, 1, 1)
