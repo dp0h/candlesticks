@@ -57,6 +57,8 @@ class CandlestickPatternEvents(object):
 
     def _process_patterns(self, res, mdata, alg):
         for (idx, val) in res:
+            #TODO: filter events if there split/divedents around
+            #TODO: output detail values for each event to file, plus index for comparison
             next_day_open = mdata['open'][idx + 1] if idx + 1 < len(mdata['open']) else 0
             for m in MktTypes:
                 key = '%s:%d' % (alg, val)

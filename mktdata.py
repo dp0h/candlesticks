@@ -50,7 +50,6 @@ def _to_talib_format(mdata):
     return res
 
 
-#TODO: need market data validation to exclude splits/dividents/corrupted data
 @lru_cache(maxsize=32)
 def get_mkt_data(symbol, from_date, to_date):
     return _to_talib_format(_get_marketdata(symbol, from_date, to_date))
