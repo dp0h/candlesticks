@@ -11,15 +11,18 @@ from marketdata.symbols import Symbols
 MktTypes = ['open', 'high', 'low', 'close']
 
 
-def _check_db():
-    ''' Checks if marketdata db is created '''
+def _check_db(symbols):
+    ''' Checks if marketdata db is created and populated with data '''
     try:
         l = list(Symbols().symbols())
-        if len(l) > 0:
-            return True
-        #TODO: check if values are in DB
+        if len(l) == 0:
+            return False
+        #TODO: check if we have at least one market data for symbol[0] from_data to from_data+4
+        #TODO: check if we have at least one market data for symbol[-1] to_data-4 to to_data
+        return True
     except:
         pass
+    return False
 
 
 def _init_db(symbols, from_date, to_date):
@@ -31,7 +34,7 @@ def _init_db(symbols, from_date, to_date):
 
 
 def init_marketdata(symbols, from_date, to_date):
-    if not _check_db():
+    if not _check_db(symbols, from_date, to_date):
         _init_db(symbols, from_date, to_date)
 
 

@@ -4,7 +4,6 @@
 Candlestick strategy backtest functionality
 '''
 from __future__ import print_function
-
 import sys
 import getopt
 from datetime import datetime
@@ -74,7 +73,7 @@ class StrategyRunner(object):
         return self
 
 
-def main(fname, from_date, to_date):
+def main(fname, from_date, to_date, strategies):
     symbols = load_symbols(fname)
     init_marketdata(symbols, from_date, to_date)
 
@@ -97,7 +96,7 @@ def main(fname, from_date, to_date):
 
 
 def usage(err):
-    print('Error: %s\nUsage: %s -from YYYYMMDD -to YYYYMMDD -shares shares_file' % (err, sys.argv[0]), file=sys.stderr)
+    print('Error: %s\nUsage: %s -from YYYYMMDD -to YYYYMMDD -shares shares_file stategies_file' % (err, sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
 if __name__ == '__main__':
@@ -105,6 +104,7 @@ if __name__ == '__main__':
         -from YYYYMMDD - from date
         -to YYYYMMDD - to date
         -shares shares_file - file with list of shares
+        stategies_file - file with traiding strategies configurations
     '''
     try:
         opts, args = getopt.getopt(sys.argv[1:], "f:t:s:", ["from=", "to=", 'shares='])
@@ -122,12 +122,12 @@ if __name__ == '__main__':
             shares_file = a
         else:
             usage('Unhandled option')
-    if len(args) != 0:
-        usage('Too many parameters.')
+    if len(args) != 1:
+        usage('Too many parameters.' if len(args) > 2 else 'Strategy file is not provided.')
     try:
         from_date = datetime(int(from_date[:4]), int(from_date[4:6]), int(from_date[6:]))
         to_date = datetime(int(to_date[:4]), int(to_date[4:6]), int(to_date[6:]))
     except:
         usage('Invalid date format.')
 
-    main(shares_file, from_date, to_date)
+    main(shares_file, from_date, to_date, args[0])
