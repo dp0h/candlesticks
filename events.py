@@ -77,7 +77,7 @@ class CandlestickPatternEvents(object):
 
 def output_results(average_changes, diff_level, min_cnt):
     now = datetime.now()
-    outpath = "./results-%d-%02d-%02d_%02d-%02d-%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
+    outpath = "./results-events-%d-%02d-%02d_%02d-%02d-%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
     os.makedirs(outpath)
 
     with open(os.path.join(outpath, 'events.html'), 'w') as f:

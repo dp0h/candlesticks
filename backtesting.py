@@ -10,20 +10,15 @@ from mktdata import init_marketdata, get_mkt_data
 from helpers import load_symbols, find_candlestick_patterns
 
 
-class MarketRules(object):
-    pass
-
-BUY_COMMISION = 0.0035
-TXN_AMOUNT = 10000
-
-
 class StrategyRunner(object):
-    def __init__(self, pattern_alg, alg_value, hold_days, buy_side, limit):
+    def __init__(self, pattern_alg, alg_value, hold_days, buy_side, limit, commision=0.0035, txn_amount=10000):
         self._pattern_alg = pattern_alg
         self._alg_value = alg_value
         self._buy_side = buy_side
         self._hold_days = hold_days
         self._limit = limit
+        self._commision = commision
+        self._txn_amount = txn_amount
         #TODO: closing should be based on bollinger bands or sliding. Also we can close position when price reached some level (e.g. 10% grow).
 
         self.balance = 0
@@ -32,13 +27,11 @@ class StrategyRunner(object):
         #TODO: check where no split/dividents in these period
         open_position = mdata['open'][mdata_idx + 1]
         close_position = mdata['open'][mdata_idx + 1 + self._hold_days]
-
-        limit_level = mdata['low'][mdata_idx + 1:mdata_idx + 1 + self._hold_days]
-        limit_level = min(limit_level)
+        limit_level = min(mdata['low'][mdata_idx + 1:mdata_idx + 1 + self._hold_days])
 
         #TODO: output all transactions details
-        cnt = int(TXN_AMOUNT / open_position)
-        open_amount = cnt * (open_position + open_position * BUY_COMMISION)
+        cnt = int(self._txn_amount / open_position)
+        open_amount = cnt * (open_position + open_position * self._commision)
         close_amount = cnt * close_position
 
         if limit_level < open_position - open_position * self._limit:  # check if price moves below threshold
@@ -48,15 +41,12 @@ class StrategyRunner(object):
         self.balance += profit
 
     def _process_short_position(self, mdata_idx, mdata):
-        #TODO: merge with _process_long_position
         open_position = mdata['open'][mdata_idx + 1]
         close_position = mdata['open'][mdata_idx + 1 + self._hold_days]
+        limit_level = max(mdata['high'][mdata_idx + 1:mdata_idx + 1 + self._hold_days])
 
-        limit_level = mdata['high'][mdata_idx + 1:mdata_idx + 1 + self._hold_days]
-        limit_level = max(limit_level)
-
-        cnt = int(TXN_AMOUNT / open_position)
-        open_amount = cnt * (open_position + open_position * BUY_COMMISION)
+        cnt = int(self._txn_amount / open_position)
+        open_amount = cnt * (open_position - open_position * self._commision)
         close_amount = cnt * close_position
 
         if limit_level > open_position + open_position * self._limit:  # check if price moves below threshold
@@ -85,6 +75,7 @@ def main(fname, from_date, to_date):
     symbols = load_symbols(fname)
     init_marketdata(symbols, from_date, to_date)
 
+    #TODO: load from file
     strategy_inputs = [
         ('CDL3LINESTRIKE', -100, 9, 1, 0.02),
         ('CDLMORNINGDOJISTAR', 100, 6, 1, 0.02),
@@ -93,11 +84,16 @@ def main(fname, from_date, to_date):
         ('CDL3WHITESOLDIERS', 100, 3, 0, 0.02),
         ('CDLINNECK', -100, 9, 1, 0.02)]
 
+    #TODO: try to run with different paramentes (holding days, limit)
+
     for x in strategy_inputs:
         sr = StrategyRunner(*x)(symbols, from_date, to_date)
         print(sr.balance)
+        #TODO: need to combine these balances in one to see changes during period
+        #TODO: get Sharpe ration for this profits
 
 if __name__ == '__main__':
     from_date = datetime(2012, 1, 1)
     to_date = datetime(2012, 12, 31)
     main('idx_ftse100.txt', from_date, to_date)
+    #TODO: add sp500, sp mid cap, russel, etc
