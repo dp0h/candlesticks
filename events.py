@@ -5,7 +5,9 @@ Candlestick events analyzer
 '''
 from __future__ import print_function
 
+import sys
 import os
+import getopt
 from datetime import datetime
 from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns
 from mktdata import MktTypes, init_marketdata, get_mkt_data
@@ -118,7 +120,38 @@ def main(fname, from_date, to_date):
     output_results(c.average_changes, diff_level, min_cnt)
 
 
+def usage(err):
+    print('Error: %s\nUsage: %s -from YYYYMMDD -to YYYYMMDD -shares shares_file' % (err, sys.argv[0]), file=sys.stderr)
+    sys.exit(1)
+
 if __name__ == '__main__':
-    from_date = datetime(2012, 1, 1)
-    to_date = datetime(2012, 12, 31)
-    main('idx_ftse100.txt', from_date, to_date)
+    '''
+        -from YYYYMMDD - from date
+        -to YYYYMMDD - to date
+        -shares shares_file - file with list of shares
+    '''
+    try:
+        opts, args = getopt.getopt(sys.argv[1:], "f:t:s:", ["from=", "to=", 'shares='])
+    except getopt.GetoptError as err:
+        usage(str(err))
+    from_date = None
+    to_date = None
+    shares_file = None
+    for o, a in opts:
+        if o == '-f':
+            from_date = a
+        elif o == '-t':
+            to_date = a
+        elif o == '-s':
+            shares_file = a
+        else:
+            usage('Unhandled option')
+    if len(args) != 0:
+        usage('Too many parameters.')
+    try:
+        from_date = datetime(int(from_date[:4]), int(from_date[4:6]), int(from_date[6:]))
+        to_date = datetime(int(to_date[:4]), int(to_date[4:6]), int(to_date[6:]))
+    except:
+        usage('Invalid date format.')
+
+    main(shares_file, from_date, to_date)
