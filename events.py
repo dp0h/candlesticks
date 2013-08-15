@@ -70,9 +70,10 @@ class CandlestickPatternEvents(object):
     def __call__(self):
         for s in self._symbols:
             mdata = get_mkt_data(s, self._from_date, self._to_date)
-            for a in self._palg:
-                res = find_candlestick_patterns(a, mdata)
-                self._process_patterns(res, mdata, a)
+            if mdata:
+                for a in self._palg:
+                    res = find_candlestick_patterns(a, mdata)
+                    self._process_patterns(res, mdata, a)
         return self
 
 

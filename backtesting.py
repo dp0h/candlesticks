@@ -7,7 +7,7 @@ from __future__ import print_function
 import sys
 import getopt
 from datetime import datetime
-from mktdata import init_marketdata, get_mkt_data
+from mktdata import init_marketdata, get_mkt_data, has_split_dividents
 from helpers import load_symbols, find_candlestick_patterns
 
 
@@ -24,14 +24,32 @@ class StrategyRunner(object):
 
         self.balance = 0
 
-    def _process_long_position(self, mdata_idx, mdata):
-        #TODO: check where no split/dividents in these period
-        # this could be done just by comparind close and adj_close
-        open_position = mdata['open'][mdata_idx + 1]
-        close_position = mdata['open'][mdata_idx + 1 + self._hold_days]
-        limit_level = min(mdata['low'][mdata_idx + 1:mdata_idx + 1 + self._hold_days])
+    def _process_position(self, mdata_idx, mdata):
+        '''
+        mdata_idx - position in market data when event happens
+        '''
+        mdata_len = len(mdata['open'])
+        open_idx = min(mdata_idx + 1, mdata_len - 1)  # we can buy at day idx+1
+        close_idx = min(mdata_idx + 1 + self._hold_days, mdata_len - 1)
+
+        if close_idx - open_idx != self._hold_days:
+            return  # TODO: remove this, we need just check close_idx != open_idx
+
+        if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
+            print('Split or dividents happen')
+            #TODO: check this case
+        #    return
+
+        open_position = mdata['open'][open_idx]
+        close_position = mdata['open'][close_idx]
+        limit_level = min(mdata['low'][open_idx:close_idx]) if self._buy_side else max(mdata['high'][open_idx:close_idx])
+
+        profit = self._process_long_position(open_position, close_position, limit_level) if self._buy_side else self._process_short_position(open_position, close_position, limit_level)
 
         #TODO: output all transactions details
+        self.balance += profit
+
+    def _process_long_position(self, open_position, close_position, limit_level):
         cnt = int(self._txn_amount / open_position)
         open_amount = cnt * (open_position + open_position * self._commision)
         close_amount = cnt * close_position
@@ -39,14 +57,9 @@ class StrategyRunner(object):
         if limit_level < open_position - open_position * self._limit:  # check if price moves below threshold
             close_amount = cnt * (open_position - open_position * self._limit)
 
-        profit = close_amount - open_amount
-        self.balance += profit
+        return close_amount - open_amount
 
-    def _process_short_position(self, mdata_idx, mdata):
-        open_position = mdata['open'][mdata_idx + 1]
-        close_position = mdata['open'][mdata_idx + 1 + self._hold_days]
-        limit_level = max(mdata['high'][mdata_idx + 1:mdata_idx + 1 + self._hold_days])
-
+    def _process_short_position(self, open_position, close_position, limit_level):
         cnt = int(self._txn_amount / open_position)
         open_amount = cnt * (open_position - open_position * self._commision)
         close_amount = cnt * close_position
@@ -54,22 +67,16 @@ class StrategyRunner(object):
         if limit_level > open_position + open_position * self._limit:  # check if price moves below threshold
             close_amount = cnt * (open_position + open_position * self._limit)
 
-        profit = open_amount - close_amount
-        self.balance += profit
+        return open_amount - close_amount
 
     def __call__(self, symbols, from_date, to_date):
         for s in symbols:
             mdata = get_mkt_data(s, from_date, to_date)
-            res = find_candlestick_patterns(self._pattern_alg, mdata)
-            for (idx, val) in res:
-                if val == self._alg_value:
-                    try:
-                        if self._buy_side:
-                            self._process_long_position(idx, mdata)
-                        else:
-                            self._process_short_position(idx, mdata)
-                    except IndexError:  # TODO: eliminate out of bound exception
-                        pass
+            if mdata:
+                res = find_candlestick_patterns(self._pattern_alg, mdata)
+                for (idx, val) in res:
+                    if val == self._alg_value:
+                        self._process_position(idx, mdata)
         return self
 
 

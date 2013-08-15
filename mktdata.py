@@ -48,6 +48,8 @@ def _get_marketdata(symbol, from_date, to_date):
 
 def _to_talib_format(mdata):
     ''' Converts market data to talib format '''
+    if len(mdata) == 0:
+        return None
     res = {}
     for x in _AllFiels:
         res[x] = np.array([])
