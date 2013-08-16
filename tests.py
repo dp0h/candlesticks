@@ -74,10 +74,10 @@ class EventsRegressionTest(unittest.TestCase):
 
         c = CandlestickPatternEvents(symbols, palg, from_date, to_date)()
         changes = list(c.average_changes)
-        self.assertEquals(20, len(changes))
-        self.assertEquals('CDLSPINNINGTOP:100', changes[19][0])
-        self.assertEquals(4, changes[19][1].cnt())
-        self.assertAlmostEquals(1.02994350282, changes[19][1].average('open')[-1])
+        self.assertEquals(17, len(changes))
+        self.assertEquals('CDLSPINNINGTOP:100', changes[16][0])
+        self.assertEquals(3, changes[16][1].cnt())
+        self.assertAlmostEquals(1.02994350282, changes[16][1].average('open')[-1])
 
 
 class TestMarketDataModule(unittest.TestCase):

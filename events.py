@@ -9,7 +9,7 @@ import os
 import getopt
 from datetime import datetime
 from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns
-from mktdata import MktTypes, init_marketdata, get_mkt_data
+from mktdata import MktTypes, init_marketdata, get_mkt_data, has_split_dividents
 
 
 class AverageChange(object):
@@ -58,14 +58,23 @@ class CandlestickPatternEvents(object):
 
     def _process_patterns(self, res, mdata, alg):
         for (idx, val) in res:
-            #TODO: filter events if there split/divedents around
+            mdata_len = len(mdata['open'])
+            open_idx = min(idx + 1, mdata_len - 1)
+            close_idx = min(idx + 1 + CONSIDERED_NDAYS, mdata_len - 1)
+
+            if close_idx - open_idx < CONSIDERED_NDAYS / 2:
+                continue  # skip events if we don't have enough days
+
+            if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
+                continue  # skip events if split/dividents happens
+
             #TODO: output detail values for each event to file, plus index for comparison
-            next_day_open = mdata['open'][idx + 1] if idx + 1 < len(mdata['open']) else 0
+            next_day_open = mdata['open'][open_idx]
             for m in MktTypes:
                 key = '%s:%d' % (alg, val)
                 if key not in self._avgs:
                     self._avgs[key] = AverageChange(CONSIDERED_NDAYS)
-                self._avgs[key].add(m, next_day_open, mdata[m][idx + 1:idx + 1 + min(CONSIDERED_NDAYS, len(mdata['open']) - (idx+1))])
+                self._avgs[key].add(m, next_day_open, mdata[m][open_idx:close_idx])
 
     def __call__(self):
         for s in self._symbols:
