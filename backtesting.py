@@ -23,9 +23,9 @@ class StrategyRunner(object):
         #TODO: closing should be based on bollinger bands or sliding. Also we can close position when price reached some level (e.g. 10% grow).
 
         self.balance = 0
-        self.txns = []  # txns format (buy_date, sell_date, buy_price, sell_price, profit)
+        self.txns = []  # txns format (symbol, buy_date, sell_date, buy_price, sell_price, profit)
 
-    def _process_position(self, mdata_idx, mdata):
+    def _process_position(self, symbol, mdata_idx, mdata):
         '''
         mdata_idx - position in market data when event happens
         '''
@@ -33,13 +33,11 @@ class StrategyRunner(object):
         open_idx = min(mdata_idx + 1, mdata_len - 1)  # we can buy at day idx+1
         close_idx = min(mdata_idx + 1 + self._hold_days, mdata_len - 1)
 
-        if close_idx == open_idx:
-            return
+        if close_idx - open_idx < self._hold_days / 2:
+            return  # skip events if we don't have enough days
 
         if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
-            print('Split or dividents happen')
-            #TODO: check this case
-        #    return
+            return  # skip events if split/dividents happens
 
         open_position = mdata['open'][open_idx]
         close_position = mdata['open'][close_idx]
@@ -47,7 +45,7 @@ class StrategyRunner(object):
 
         profit = self._process_long_position(open_position, close_position, limit_level) if self._buy_side else self._process_short_position(open_position, close_position, limit_level)
 
-        self.txns.append((mdata['date'][open_idx], mdata['date'][close_idx], open_position, close_position, profit))
+        self.txns.append((symbol, mdata['date'][open_idx], mdata['date'][close_idx], open_position, close_position, profit))
         self.balance += profit
 
     def _process_long_position(self, open_position, close_position, limit_level):
@@ -77,7 +75,7 @@ class StrategyRunner(object):
                 res = find_candlestick_patterns(self._pattern_alg, mdata)
                 for (idx, val) in res:
                     if val == self._alg_value:
-                        self._process_position(idx, mdata)
+                        self._process_position(s, idx, mdata)
         return self
 
 
@@ -97,13 +95,12 @@ def main(fname, from_date, to_date, strategies):
 
     strategies_cfg = load_strategies(strategies)
 
-    #TODO: try to run with different paramentes (holding days, limit)
+    #TODO: try to run with different limits
 
     for x in strategies_cfg:
         sr = StrategyRunner(*x)(symbols, from_date, to_date)
-        print(x[0])
-        print(sr.balance)
-        print(sr.txns)
+        print('%s %d: %f' % (x[0], x[1], sr.balance))
+        #print(sr.txns)
         #TODO: need to combine these balances in one to see changes during period
         #TODO: get Sharpe ration for this profits
 
