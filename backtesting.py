@@ -23,6 +23,7 @@ class StrategyRunner(object):
         #TODO: closing should be based on bollinger bands or sliding. Also we can close position when price reached some level (e.g. 10% grow).
 
         self.balance = 0
+        self.txns = []  # txns format (buy_date, sell_date, buy_price, sell_price, profit)
 
     def _process_position(self, mdata_idx, mdata):
         '''
@@ -32,8 +33,8 @@ class StrategyRunner(object):
         open_idx = min(mdata_idx + 1, mdata_len - 1)  # we can buy at day idx+1
         close_idx = min(mdata_idx + 1 + self._hold_days, mdata_len - 1)
 
-        if close_idx - open_idx != self._hold_days:
-            return  # TODO: remove this, we need just check close_idx != open_idx
+        if close_idx == open_idx:
+            return
 
         if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
             print('Split or dividents happen')
@@ -46,7 +47,7 @@ class StrategyRunner(object):
 
         profit = self._process_long_position(open_position, close_position, limit_level) if self._buy_side else self._process_short_position(open_position, close_position, limit_level)
 
-        #TODO: output all transactions details
+        self.txns.append((mdata['date'][open_idx], mdata['date'][close_idx], open_position, close_position, profit))
         self.balance += profit
 
     def _process_long_position(self, open_position, close_position, limit_level):
@@ -80,24 +81,29 @@ class StrategyRunner(object):
         return self
 
 
+def load_strategies(fname):
+    with open(fname) as f:
+        lines = f.readlines()
+    res = []
+    for x in lines:
+        items = x.split(',')
+        res.append((items[0], int(items[1]), int(items[2]), int(items[3]), float(items[4])))
+    return res
+
+
 def main(fname, from_date, to_date, strategies):
     symbols = load_symbols(fname)
     init_marketdata(symbols, from_date, to_date)
 
-    #TODO: load from file
-    strategy_inputs = [
-        ('CDL3LINESTRIKE', -100, 9, 1, 0.02),
-        ('CDLMORNINGDOJISTAR', 100, 6, 1, 0.02),
-        ('CDL3LINESTRIKE', 100, 9, 1, 0.02),
-        ('CDLGAPSIDESIDEWHITE', -100, 9, 1, 0.02),
-        ('CDL3WHITESOLDIERS', 100, 3, 0, 0.02),
-        ('CDLINNECK', -100, 9, 1, 0.02)]
+    strategies_cfg = load_strategies(strategies)
 
     #TODO: try to run with different paramentes (holding days, limit)
 
-    for x in strategy_inputs:
+    for x in strategies_cfg:
         sr = StrategyRunner(*x)(symbols, from_date, to_date)
+        print(x[0])
         print(sr.balance)
+        print(sr.txns)
         #TODO: need to combine these balances in one to see changes during period
         #TODO: get Sharpe ration for this profits
 

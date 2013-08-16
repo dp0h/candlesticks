@@ -7,7 +7,7 @@ import numpy as np
 from datetime import datetime
 from events import AverageChange, CandlestickPatternEvents
 from mktdata import init_marketdata, has_split_dividents
-from helpers import talib_candlestick_funcs, find_candlestick_patterns, load_symbols
+from helpers import talib_candlestick_funcs, find_candlestick_patterns
 from backtesting import StrategyRunner
 
 
@@ -86,6 +86,7 @@ class TestMarketDataModule(unittest.TestCase):
         self.assertFalse(has_split_dividents({'close': [1, 3], 'adj_close': [2, 4]}, 0, 1))
         self.assertTrue(has_split_dividents({'close': [1, 3], 'adj_close': [2, 8]}, 0, 1))
         self.assertTrue(has_split_dividents({'close': [1.0, 1.0], 'adj_close': [1.0, 1.2]}, 0, 1))
+        self.assertFalse(has_split_dividents({'close': [100.0, 100.0], 'adj_close': [100.0, 100.4]}, 0, 1))
 
 
 class StrategyRunnerRegressionTest(unittest.TestCase):
@@ -96,7 +97,7 @@ class StrategyRunnerRegressionTest(unittest.TestCase):
         init_marketdata(symbols, from_date, to_date)
 
         sr = StrategyRunner('CDL3LINESTRIKE', -100, 9, 1, 0.02)(symbols, from_date, to_date)
-        self.assertAlmostEqual(-215.495, sr.balance)
+        self.assertAlmostEqual(-353.443, sr.balance, 2)
 
     def test_short_strategy(self):
         from_date = datetime(2012, 1, 1)

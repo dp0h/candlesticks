@@ -64,8 +64,20 @@ def get_mkt_data(symbol, from_date, to_date):
     return _to_talib_format(_get_marketdata(symbol, from_date, to_date))
 
 
+def approx_equal(a, b, tol):
+    return abs(a - b) < tol
+
+
+def percent_equal(a, b, comp, tol):
+    return (abs(a - b) / comp) * 100 < tol
+
+
 def has_split_dividents(mdata, from_date, to_date):
     ''' Verifies if market data interval has splits, dividends '''
+    #print(mdata['close'][from_date:to_date])
+    #print(mdata['adj_close'][from_date:to_date])
     from_diff = abs(mdata['close'][from_date] - mdata['adj_close'][from_date])
     to_diff = abs(mdata['close'][to_date] - mdata['adj_close'][to_date])
-    return round(from_diff, 1) != round(to_diff, 1)
+    if approx_equal(from_diff, to_diff, 0.0001):
+        return False
+    return not percent_equal(from_diff, to_diff, mdata['close'][to_date], 0.5)
