@@ -4,11 +4,12 @@
 Candlestick strategy backtest functionality
 '''
 from __future__ import print_function
+import os
 import sys
 import getopt
 from datetime import datetime
 from mktdata import init_marketdata, get_mkt_data, has_split_dividents
-from helpers import load_symbols, find_candlestick_patterns
+from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table
 
 
 class StrategyRunner(object):
@@ -89,24 +90,35 @@ def load_strategies(fname):
     return res
 
 
-def main(fname, from_date, to_date, strategies):
+def output_results(res):
+    outpath = create_result_dir('backtesting')
+
+    with open(os.path.join(outpath, 'backtesting.html'), 'w') as f:
+        out = [(x[0], x[1], x[2], x[3], x[4], x[5]) for x in res]
+        create_table(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'], out, ['%s', '%d', '%d', '%d', '%f', '%f'])
+
+    for x in res:
+        with open(os.path.join(outpath, 'txns_%s_%d_%d_%d_%d.html' % (x[0], x[1], x[2], x[3], x[4])), 'w') as f:
+            create_table(f, ['Symbol', 'Buy date', 'Sell date', 'Buy price', 'Sell prive', 'Profit'], x[6], ['%s', '%s', '%s', '%f', '%f', '%f'])
+
+
+def backtesting_main(fname, from_date, to_date, strategies):
     symbols = load_symbols(fname)
     init_marketdata(symbols, from_date, to_date)
 
     strategies_cfg = load_strategies(strategies)
-
-    #TODO: try to run with different limits
+    res = []
 
     for x in strategies_cfg:
         sr = StrategyRunner(*x)(symbols, from_date, to_date)
-        print('%s %d: %f' % (x[0], x[1], sr.balance))
-        #print(sr.txns)
-        #TODO: need to combine these balances in one to see changes during period
+        res.append((x[0], x[1], x[2], x[3], x[4], sr.balance, sr.txns))
         #TODO: get Sharpe ration for this profits
+
+    output_results(res)
 
 
 def usage(err):
-    print('Error: %s\nUsage: %s -from YYYYMMDD -to YYYYMMDD -shares shares_file stategies_file' % (err, sys.argv[0]), file=sys.stderr)
+    print('Error: %s\nUsage: %s --from=YYYYMMDD --to=YYYYMMDD --shares=shares_file strategies_file' % (err, sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
 if __name__ == '__main__':
@@ -114,7 +126,7 @@ if __name__ == '__main__':
         -from YYYYMMDD - from date
         -to YYYYMMDD - to date
         -shares shares_file - file with list of shares
-        stategies_file - file with traiding strategies configurations
+        strategies_file - file with traiding strategies configurations
     '''
     try:
         opts, args = getopt.getopt(sys.argv[1:], "f:t:s:", ["from=", "to=", 'shares='])
@@ -124,11 +136,11 @@ if __name__ == '__main__':
     to_date = None
     shares_file = None
     for o, a in opts:
-        if o == '-f':
+        if o == '-f' or o == '--from':
             from_date = a
-        elif o == '-t':
+        elif o == '-t' or o == '--to':
             to_date = a
-        elif o == '-s':
+        elif o == '-s' or o == '--shares':
             shares_file = a
         else:
             usage('Unhandled option')
@@ -140,4 +152,4 @@ if __name__ == '__main__':
     except:
         usage('Invalid date format.')
 
-    main(shares_file, from_date, to_date, args[0])
+    backtesting_main(shares_file, from_date, to_date, args[0])

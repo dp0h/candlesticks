@@ -3,11 +3,13 @@
 Helper functions
 '''
 
+import os
 import talib
 import numpy as np
 import pylab as pl
 from matplotlib.dates import DateFormatter, WeekdayLocator, DayLocator, MONDAY
 from matplotlib.finance import candlestick
+from datetime import datetime
 
 
 def talib_candlestick_funcs():
@@ -50,3 +52,24 @@ def save_candlestick_chart(fname, quotes):
     pl.setp(pl.gca().get_xticklabels(), rotation=45, horizontalalignment='right')
 
     pl.savefig(fname)
+
+
+def create_result_dir(name):
+    now = datetime.now()
+    outpath = "./results-%s-%d-%02d-%02d_%02d-%02d-%02d" % (name, now.year, now.month, now.day, now.hour, now.minute, now.second)
+    os.makedirs(outpath)
+    return outpath
+
+
+def create_table(f, header, values, valueFormat):
+    f.write('<table border="1">')
+    f.write('<tr>')
+    for x in header:
+        f.write('<th>%s</th>' % x)
+    f.write('</tr>')
+    for x in values:
+        f.write('<tr>')
+        for i in range(0, len(valueFormat)):
+            f.write(('<th>' + valueFormat[i] + ' </th>') % x[i])
+        f.write('</tr>')
+    f.write('</table>')

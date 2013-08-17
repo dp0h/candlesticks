@@ -49,3 +49,6 @@ src/
 
 # results directories
 results-*
+
+# strategies
+_strategies.dat

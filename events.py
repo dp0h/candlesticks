@@ -8,7 +8,7 @@ import sys
 import os
 import getopt
 from datetime import datetime
-from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns
+from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns, create_result_dir
 from mktdata import MktTypes, init_marketdata, get_mkt_data, has_split_dividents
 
 
@@ -87,9 +87,7 @@ class CandlestickPatternEvents(object):
 
 
 def output_results(average_changes, diff_level, min_cnt):
-    now = datetime.now()
-    outpath = "./results-events-%d-%02d-%02d_%02d-%02d-%02d" % (now.year, now.month, now.day, now.hour, now.minute, now.second)
-    os.makedirs(outpath)
+    outpath = create_result_dir('events')
 
     with open(os.path.join(outpath, 'events.html'), 'w') as f:
         i = 0
@@ -115,7 +113,7 @@ def output_results(average_changes, diff_level, min_cnt):
         f.write('<b>Total: %d</b>' % i)
 
 
-def main(fname, from_date, to_date):
+def events_main(fname, from_date, to_date):
     symbols = load_symbols(fname)
     init_marketdata(symbols, from_date, to_date)
 
@@ -130,7 +128,7 @@ def main(fname, from_date, to_date):
 
 
 def usage(err):
-    print('Error: %s\nUsage: %s -from YYYYMMDD -to YYYYMMDD -shares shares_file' % (err, sys.argv[0]), file=sys.stderr)
+    print('Error: %s\nUsage: %s --from=YYYYMMDD --to=YYYYMMDD --shares=shares_file' % (err, sys.argv[0]), file=sys.stderr)
     sys.exit(1)
 
 if __name__ == '__main__':
@@ -147,11 +145,11 @@ if __name__ == '__main__':
     to_date = None
     shares_file = None
     for o, a in opts:
-        if o == '-f':
+        if o == '-f' or o == '--from':
             from_date = a
-        elif o == '-t':
+        elif o == '-t' or o == '--to':
             to_date = a
-        elif o == '-s':
+        elif o == '-s' or o == '--shares':
             shares_file = a
         else:
             usage('Unhandled option')
@@ -163,4 +161,4 @@ if __name__ == '__main__':
     except:
         usage('Invalid date format.')
 
-    main(shares_file, from_date, to_date)
+    events_main(shares_file, from_date, to_date)
