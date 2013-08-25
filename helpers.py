@@ -73,3 +73,7 @@ def create_table(f, header, values, valueFormat):
             f.write(('<th>' + valueFormat[i] + ' </th>') % x[i])
         f.write('</tr>')
     f.write('</table>')
+
+
+def mkdate(datestr):
+    return datetime(int(datestr[:4]), int(datestr[4:6]), int(datestr[6:]))

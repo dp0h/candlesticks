@@ -3,12 +3,9 @@
 '''
 Candlestick events analyzer
 '''
-from __future__ import print_function
-import sys
 import os
-import getopt
-from datetime import datetime
-from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns, create_result_dir
+import argparse
+from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns, create_result_dir, mkdate
 from mktdata import MktTypes, init_marketdata, get_mkt_data, has_split_dividents
 
 
@@ -127,38 +124,11 @@ def events_main(fname, from_date, to_date):
     output_results(c.average_changes, diff_level, min_cnt)
 
 
-def usage(err):
-    print('Error: %s\nUsage: %s --from=YYYYMMDD --to=YYYYMMDD --shares=shares_file' % (err, sys.argv[0]), file=sys.stderr)
-    sys.exit(1)
-
 if __name__ == '__main__':
-    '''
-        -from YYYYMMDD - from date
-        -to YYYYMMDD - to date
-        -shares shares_file - file with list of shares
-    '''
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "f:t:s:", ["from=", "to=", 'shares='])
-    except getopt.GetoptError as err:
-        usage(str(err))
-    from_date = None
-    to_date = None
-    shares_file = None
-    for o, a in opts:
-        if o == '-f' or o == '--from':
-            from_date = a
-        elif o == '-t' or o == '--to':
-            to_date = a
-        elif o == '-s' or o == '--shares':
-            shares_file = a
-        else:
-            usage('Unhandled option')
-    if len(args) != 0:
-        usage('Too many parameters.')
-    try:
-        from_date = datetime(int(from_date[:4]), int(from_date[4:6]), int(from_date[6:]))
-        to_date = datetime(int(to_date[:4]), int(to_date[4:6]), int(to_date[6:]))
-    except:
-        usage('Invalid date format.')
+    parser = argparse.ArgumentParser(description='Candlestick events analyzer')
+    parser.add_argument('-f', '--fromdate', metavar='YYYYMMDD', type=mkdate, required=True, help='from date in format YYYYMMDD')
+    parser.add_argument('-t', '--todate', metavar='YYYYMMDD', type=mkdate, required=True, help='from date in format YYYYMMDD')
+    parser.add_argument('-s', '--shares', metavar='FILENAME', type=str, required=True, help='file with list of shares')
 
-    events_main(shares_file, from_date, to_date)
+    args = parser.parse_args()
+    events_main(args.shares, args.fromdate, args.todate)

@@ -3,13 +3,10 @@
 '''
 Candlestick strategy backtest functionality
 '''
-from __future__ import print_function
 import os
-import sys
-import getopt
-from datetime import datetime
+import argparse
 from mktdata import init_marketdata, get_mkt_data, has_split_dividents
-from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table
+from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table, mkdate
 
 
 class StrategyRunner(object):
@@ -117,39 +114,12 @@ def backtesting_main(fname, from_date, to_date, strategies):
     output_results(res)
 
 
-def usage(err):
-    print('Error: %s\nUsage: %s --from=YYYYMMDD --to=YYYYMMDD --shares=shares_file strategies_file' % (err, sys.argv[0]), file=sys.stderr)
-    sys.exit(1)
-
 if __name__ == '__main__':
-    '''
-        -from YYYYMMDD - from date
-        -to YYYYMMDD - to date
-        -shares shares_file - file with list of shares
-        strategies_file - file with traiding strategies configurations
-    '''
-    try:
-        opts, args = getopt.getopt(sys.argv[1:], "f:t:s:", ["from=", "to=", 'shares='])
-    except getopt.GetoptError as err:
-        usage(str(err))
-    from_date = None
-    to_date = None
-    shares_file = None
-    for o, a in opts:
-        if o == '-f' or o == '--from':
-            from_date = a
-        elif o == '-t' or o == '--to':
-            to_date = a
-        elif o == '-s' or o == '--shares':
-            shares_file = a
-        else:
-            usage('Unhandled option')
-    if len(args) != 1:
-        usage('Too many parameters.' if len(args) > 2 else 'Strategy file is not provided.')
-    try:
-        from_date = datetime(int(from_date[:4]), int(from_date[4:6]), int(from_date[6:]))
-        to_date = datetime(int(to_date[:4]), int(to_date[4:6]), int(to_date[6:]))
-    except:
-        usage('Invalid date format.')
+    parser = argparse.ArgumentParser(description='Candlestick strategy backtesting')
+    parser.add_argument('-f', '--fromdate', metavar='YYYYMMDD', type=mkdate, required=True, help='from date in format YYYYMMDD')
+    parser.add_argument('-t', '--todate', metavar='YYYYMMDD', type=mkdate, required=True, help='from date in format YYYYMMDD')
+    parser.add_argument('-s', '--shares', metavar='FILENAME', type=str, required=True, help='file with list of shares')
+    parser.add_argument('strategies', metavar='STRATEGIES_FILE', type=str, nargs=1, help='')
 
-    backtesting_main(shares_file, from_date, to_date, args[0])
+    args = parser.parse_args()
+    backtesting_main(args.shares, args.fromdate, args.todate, args.strategies[0])
