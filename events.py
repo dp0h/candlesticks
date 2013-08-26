@@ -55,23 +55,26 @@ class CandlestickPatternEvents(object):
 
     def _process_patterns(self, res, mdata, alg):
         for (idx, val) in res:
-            mdata_len = len(mdata['open'])
-            open_idx = min(idx + 1, mdata_len - 1)
-            close_idx = min(idx + 1 + CONSIDERED_NDAYS, mdata_len - 1)
+            try:
+                mdata_len = len(mdata['open'])
+                open_idx = min(idx + 1, mdata_len - 1)
+                close_idx = min(idx + 1 + CONSIDERED_NDAYS, mdata_len - 1)
 
-            if close_idx - open_idx < CONSIDERED_NDAYS / 2:
-                continue  # skip events if we don't have enough days
+                if close_idx - open_idx < CONSIDERED_NDAYS / 2:
+                    continue  # skip events if we don't have enough days
 
-            if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
-                continue  # skip events if split/dividents happens
+                if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
+                    continue  # skip events if split/dividents happens
 
-            #TODO: output detail values for each event to file, plus index for comparison
-            next_day_open = mdata['open'][open_idx]
-            for m in MktTypes:
-                key = '%s:%d' % (alg, val)
-                if key not in self._avgs:
-                    self._avgs[key] = AverageChange(CONSIDERED_NDAYS)
-                self._avgs[key].add(m, next_day_open, mdata[m][open_idx:close_idx])
+                #TODO: output detail values for each event to file, plus index for comparison
+                next_day_open = mdata['open'][open_idx]
+                for m in MktTypes:
+                    key = '%s:%d' % (alg, val)
+                    if key not in self._avgs:
+                        self._avgs[key] = AverageChange(CONSIDERED_NDAYS)
+                    self._avgs[key].add(m, next_day_open, mdata[m][open_idx:close_idx])
+            except:
+                pass
 
     def __call__(self):
         for s in self._symbols:
