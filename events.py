@@ -83,8 +83,11 @@ class CandlestickPatternEvents(object):
         return self
 
 
-def output_results(average_changes, diff_level, min_cnt):
+def output_results(average_changes, diff_level, min_cnt, params):
     outpath = create_result_dir('events')
+
+    with open(os.path.join(outpath, 'params.txt'), 'w') as f:
+        f.write('File: %s\nFrom: %s\nTo: %s' % (params[0], params[1], params[2]))
 
     with open(os.path.join(outpath, 'events.html'), 'w') as f:
         i = 0
@@ -121,7 +124,7 @@ def events_main(fname, from_date, to_date):
     diff_level = 0.02  # output patterns where up/down > diff_level
     min_cnt = 5  # output patterns with > min_cnt events
 
-    output_results(c.average_changes, diff_level, min_cnt)
+    output_results(c.average_changes, diff_level, min_cnt, [fname, from_date, to_date])
 
 
 if __name__ == '__main__':
