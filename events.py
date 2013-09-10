@@ -86,33 +86,47 @@ class CandlestickPatternEvents(object):
         return self
 
 
-def output_results(average_changes, diff_level, min_cnt, params):
+def filter_average_changes(average_changes, diff_level, min_cnt):
+    for (k, val) in average_changes:
+        mn = mx = 1.0
+        for x in ['open', 'close']:
+            v = val.average(x)
+            mn = min(mn, min(v))
+            mx = max(mx, max(v))
+        if (mx > 1.0 + diff_level or mn < 1.0 - diff_level) and val.cnt() >= min_cnt:
+            yield (k, val)
+
+
+def output_results(average_changes, params):
     outpath = create_result_dir('events')
 
     with open(os.path.join(outpath, 'params.txt'), 'w') as f:
-        f.write('File: %s\nFrom: %s\nTo: %s' % (params[0], params[1], params[2]))
+        f.write('File: %s\nFrom: %s\nTo: %s\n\n' % (params[0], params[1], params[2]))
+        for (k, val) in average_changes:
+            f.write(k + '\n')
+
+    with open(os.path.join(outpath, 'strategies.dat'), 'w') as f:
+        for (k, v) in average_changes:
+            for days in [1, 2, 3, 5, 9]:
+                for buy in [0, 1]:
+                    for limit in [0.01, 0.015, 0.02, 0.03, 0.05]:
+                        f.write(','.join(k.split(':') + [str(days), str(buy), str(limit)]) + '\n')
 
     with open(os.path.join(outpath, 'events.html'), 'w') as f:
         i = 0
         for (k, val) in average_changes:
-            mn = mx = 1.0
-            for x in ['open', 'close']:
-                v = val.average(x)
-                mn = min(mn, min(v))
-                mx = max(mx, max(v))
-            if (mx > 1.0 + diff_level or mn < 1.0 - diff_level) and val.cnt() >= min_cnt:
-                f.write('<h3>%s</h3>' % k)
-                f.write('<b>Number of events: %d</b><br/>' % val.cnt())
-                f.write('</br><code>%s</code>' % repr(val).replace('<', '&lt;').replace('>', '&gt;'))
-                i += 1
-                val = [val.average(t) for t in [MktTypes[0], MktTypes[3], MktTypes[1], MktTypes[2]]]
-                days = [[x for x in range(len(val[0]))]]  # put fake dates
-                quotes = days + val
-                quotes = zip(*quotes)
-                img_name = '%s.png' % k
-                save_candlestick_chart(os.path.join(outpath, img_name), quotes)
-                f.write('<img src="./%s"/>' % img_name)
-                f.write('<hr/>')
+            f.write('<h3>%s</h3>' % k)
+            f.write('<b>Number of events: %d</b><br/>' % val.cnt())
+            f.write('</br><code>%s</code>' % repr(val).replace('<', '&lt;').replace('>', '&gt;'))
+            i += 1
+            val = [val.average(t) for t in [MktTypes[0], MktTypes[3], MktTypes[1], MktTypes[2]]]
+            days = [[x for x in range(len(val[0]))]]  # put fake dates
+            quotes = days + val
+            quotes = zip(*quotes)
+            img_name = '%s.png' % k
+            save_candlestick_chart(os.path.join(outpath, img_name), quotes)
+            f.write('<img src="./%s"/>' % img_name)
+            f.write('<hr/>')
         f.write('<b>Total: %d</b>' % i)
 
 
@@ -125,9 +139,11 @@ def events_main(fname, from_date, to_date):
     c = CandlestickPatternEvents(symbols, palg, from_date, to_date)()
 
     diff_level = 0.02  # output patterns where up/down > diff_level
-    min_cnt = 5  # output patterns with > min_cnt events
+    min_cnt = 10  # output patterns with > min_cnt events
 
-    output_results(c.average_changes, diff_level, min_cnt, [fname, from_date, to_date])
+    average_changes = list(filter_average_changes(c.average_changes, diff_level, min_cnt))
+
+    output_results(average_changes, [fname, from_date, to_date])
 
 
 if __name__ == '__main__':
