@@ -62,16 +62,28 @@ def create_result_dir(name):
 
 
 def create_table(f, header, values, valueFormat):
+    table_header(f, header)
+    for x in values:
+        table_row(f, x, valueFormat)
+    table_close(f)
+
+
+def table_header(f, header):
     f.write('<table border="1">')
     f.write('<tr>')
     for x in header:
         f.write('<th>%s</th>' % x)
     f.write('</tr>')
-    for x in values:
-        f.write('<tr>')
-        for i in range(0, len(valueFormat)):
-            f.write(('<th>' + valueFormat[i] + ' </th>') % x[i])
-        f.write('</tr>')
+
+
+def table_row(f, value, valueFormat):
+    f.write('<tr>')
+    for i in range(0, len(valueFormat)):
+        f.write(('<th>' + valueFormat[i] + ' </th>') % value[i])
+    f.write('</tr>')
+
+
+def table_close(f):
     f.write('</table>')
 
 

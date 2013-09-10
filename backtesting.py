@@ -6,7 +6,7 @@ Candlestick strategy backtest functionality
 import os
 import argparse
 from mktdata import init_marketdata, get_mkt_data, has_split_dividents
-from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table, mkdate
+from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table, mkdate, table_header, table_row, table_close
 
 
 class StrategyRunner(object):
@@ -87,31 +87,35 @@ def load_strategies(fname):
     return res
 
 
-def output_results(res):
+def output_transactions(outpath, sparams, txns):
+    with open(os.path.join(outpath, 'txns_%s_%d_%d_%d_%d.html' % (sparams[0], sparams[1], sparams[2], sparams[3], sparams[4])), 'w') as f:
+        create_table(f, ['Symbol', 'Buy date', 'Sell date', 'Buy price', 'Sell prive', 'Profit'], txns, ['%s', '%s', '%s', '%f', '%f', '%f'])
+
+
+def run_strategies(func, ctx):
     outpath = create_result_dir('backtesting')
 
     with open(os.path.join(outpath, 'backtesting.html'), 'w') as f:
-        out = [(x[0], x[1], x[2], x[3], x[4], x[5]) for x in res]
-        create_table(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'], out, ['%s', '%d', '%d', '%d', '%f', '%f'])
+        table_header(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'])
+        for x in func(ctx):
+            table_row(f, x, ['%s', '%d', '%d', '%d', '%f', '%f'])
+            output_transactions(outpath, (x[0], x[1], x[2], x[3], x[4]), x[6])
+        table_close(f)
 
-    for x in res:
-        with open(os.path.join(outpath, 'txns_%s_%d_%d_%d_%d.html' % (x[0], x[1], x[2], x[3], x[4])), 'w') as f:
-            create_table(f, ['Symbol', 'Buy date', 'Sell date', 'Buy price', 'Sell prive', 'Profit'], x[6], ['%s', '%s', '%s', '%f', '%f', '%f'])
+
+def async_runner((symbols, from_date, to_date, strategies_cfg)):
+    for x in strategies_cfg:
+        sr = StrategyRunner(*x)(symbols, from_date, to_date)
+        yield ((x[0], x[1], x[2], x[3], x[4], sr.balance, sr.txns))
 
 
-def backtesting_main(fname, from_date, to_date, strategies):
+def backtesting_main(fname, from_date, to_date, strategies, async=False):
     symbols = load_symbols(fname)
     init_marketdata(symbols, from_date, to_date)
 
     strategies_cfg = load_strategies(strategies)
-    res = []
 
-    for x in strategies_cfg:
-        sr = StrategyRunner(*x)(symbols, from_date, to_date)
-        res.append((x[0], x[1], x[2], x[3], x[4], sr.balance, sr.txns))
-        #TODO: get Sharpe ration for this profits
-
-    output_results(res)
+    run_strategies(async_runner, (symbols, from_date, to_date, strategies_cfg))
 
 
 if __name__ == '__main__':

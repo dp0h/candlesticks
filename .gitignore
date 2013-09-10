@@ -52,3 +52,6 @@ results-*
 
 # strategies
 _strategies.dat
+
+# shell script
+*.sh
