@@ -93,7 +93,7 @@ def output_transactions(outpath, sparams, txns):
         create_table(f, ['Symbol', 'Buy date', 'Sell date', 'Buy price', 'Sell prive', 'Profit'], txns, ['%s', '%s', '%s', '%f', '%f', '%f'])
 
 
-def async_runner((outpath, symbols, from_date, to_date, strategy)):
+def strategy_runner((outpath, symbols, from_date, to_date, strategy)):
     sr = StrategyRunner(*strategy)(symbols, from_date, to_date)
     output_transactions(outpath, (strategy[0], strategy[1], strategy[2], strategy[3], strategy[4]), sr.txns)
     return (strategy[0], strategy[1], strategy[2], strategy[3], strategy[4], sr.balance)
@@ -106,7 +106,7 @@ def backtesting_main(fname, from_date, to_date, strategies, async=False):
     outpath = create_result_dir('backtesting')
 
     pool = Pool(4)
-    res = pool.map(async_runner, [(outpath, symbols, from_date, to_date, x) for x in strategies_cfg])
+    res = pool.map(strategy_runner, [(outpath, symbols, from_date, to_date, x) for x in strategies_cfg])
 
     with open(os.path.join(outpath, 'backtesting.html'), 'w') as f:
         create_table(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'], res, ['%s', '%d', '%d', '%d', '%f', '%f'])
