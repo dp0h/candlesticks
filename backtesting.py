@@ -6,7 +6,7 @@ Candlestick strategy backtest functionality
 import os
 import argparse
 from mktdata import init_marketdata, get_mkt_data, has_split_dividents
-from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table, mkdate, table_header, table_row, table_close
+from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table, mkdate
 from multiprocessing import Pool
 
 
@@ -93,16 +93,6 @@ def output_transactions(outpath, sparams, txns):
         create_table(f, ['Symbol', 'Buy date', 'Sell date', 'Buy price', 'Sell prive', 'Profit'], txns, ['%s', '%s', '%s', '%f', '%f', '%f'])
 
 
-def run_strategies(outpath, func, ctx):
-
-    with open(os.path.join(outpath, 'backtesting.html'), 'w') as f:
-        table_header(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'])
-        for x in func(ctx):
-            table_row(f, x, ['%s', '%d', '%d', '%d', '%f', '%f'])
-            #output_transactions(outpath, (x[0], x[1], x[2], x[3], x[4]), x[6])
-        table_close(f)
-
-
 def async_runner((outpath, symbols, from_date, to_date, strategy)):
     sr = StrategyRunner(*strategy)(symbols, from_date, to_date)
     output_transactions(outpath, (strategy[0], strategy[1], strategy[2], strategy[3], strategy[4]), sr.txns)
@@ -115,12 +105,11 @@ def backtesting_main(fname, from_date, to_date, strategies, async=False):
     strategies_cfg = load_strategies(strategies)
     outpath = create_result_dir('backtesting')
 
-    #pool = Pool(4)
-    res = [async_runner((outpath, symbols, from_date, to_date, x)) for x in strategies_cfg]
+    pool = Pool(4)
+    res = pool.map(async_runner, [(outpath, symbols, from_date, to_date, x) for x in strategies_cfg])
+
     with open(os.path.join(outpath, 'backtesting.html'), 'w') as f:
         create_table(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'], res, ['%s', '%d', '%d', '%d', '%f', '%f'])
-
-    #run_strategies(outpath, async_runner, (outpath, symbols, from_date, to_date, strategies_cfg))
 
 
 if __name__ == '__main__':
