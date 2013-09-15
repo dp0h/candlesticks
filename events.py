@@ -6,7 +6,7 @@ Candlestick events analyzer
 import os
 import argparse
 from helpers import talib_candlestick_funcs, load_symbols, save_candlestick_chart, find_candlestick_patterns, create_result_dir, mkdate
-from mktdata import MktTypes, init_marketdata, get_mkt_data, has_split_dividents
+from mktdata import MktTypes, init_marketdata, get_mkt_data, has_split_dividents, odd_data
 
 
 class AverageChange(object):
@@ -65,6 +65,9 @@ class CandlestickPatternEvents(object):
 
                 if has_split_dividents(mdata, max(open_idx - 5, 0), close_idx):
                     continue  # skip events if split/dividents happens
+
+                if odd_data(mdata['open'][open_idx], mdata['open'][close_idx]):
+                    continue  # skip odd market data
 
                 #TODO: output detail values for each event to file, plus index for comparison
                 next_day_open = mdata['open'][open_idx]
@@ -154,3 +157,4 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     events_main(args.shares, args.fromdate, args.todate)
+

@@ -51,6 +51,7 @@ src/
 results-*
 
 # strategies
+strg/
 _strategies.dat
 
 # shell script

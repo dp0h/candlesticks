@@ -5,7 +5,7 @@ Candlestick strategy backtest functionality
 '''
 import os
 import argparse
-from mktdata import init_marketdata, get_mkt_data, has_split_dividents
+from mktdata import init_marketdata, get_mkt_data, has_split_dividents, odd_data
 from helpers import load_symbols, find_candlestick_patterns, create_result_dir, create_table, mkdate
 from multiprocessing import Pool
 
@@ -42,6 +42,9 @@ class StrategyRunner(object):
         close_position = mdata['open'][close_idx]
         limit_level = min(mdata['low'][open_idx:close_idx]) if self._buy_side else max(mdata['high'][open_idx:close_idx])
 
+        if odd_data(open_position, close_position):
+            return  # skip odd events
+
         profit = self._process_long_position(open_position, close_position, limit_level) if self._buy_side else self._process_short_position(open_position, close_position, limit_level)
 
         self.txns.append((symbol, mdata['date'][open_idx], mdata['date'][close_idx], open_position, close_position, profit))
@@ -74,7 +77,10 @@ class StrategyRunner(object):
                 res = find_candlestick_patterns(self._pattern_alg, mdata)
                 for (idx, val) in res:
                     if val == self._alg_value:
-                        self._process_position(s, idx, mdata)
+                        try:
+                            self._process_position(s, idx, mdata)
+                        except:
+                            pass
         return self
 
 
@@ -110,6 +116,10 @@ def backtesting_main(fname, from_date, to_date, strategies, async=False):
 
     with open(os.path.join(outpath, 'backtesting.html'), 'w') as f:
         create_table(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'], res, ['%s', '%d', '%d', '%d', '%f', '%f'])
+
+    profitable = [x for x in res if x[5] > 1.0]
+    with open(os.path.join(outpath, 'profit.html'), 'w') as f:
+        create_table(f, ['Pattern', 'Pattern params', 'Hold days', 'Buy side', 'Limit', 'Profit'], profitable, ['%s', '%d', '%d', '%d', '%f', '%f'])
 
 
 if __name__ == '__main__':

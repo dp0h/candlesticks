@@ -79,3 +79,9 @@ def has_split_dividents(mdata, from_date, to_date):
     if approx_equal(from_diff, to_diff, 0.0001):
         return False
     return not percent_equal(from_diff, to_diff, mdata['close'][to_date], 0.8)
+
+
+def odd_data(open_position, close_position):
+    if approx_equal(0, open_position, 0.1) or approx_equal(0, close_position, 0.1):
+        return True
+    return abs(open_position - close_position) > min(open_position, close_position)

@@ -6,7 +6,7 @@ from test import test_support
 import numpy as np
 from datetime import datetime
 from events import AverageChange, CandlestickPatternEvents
-from mktdata import init_marketdata, has_split_dividents
+from mktdata import init_marketdata, has_split_dividents, odd_data
 from helpers import talib_candlestick_funcs, find_candlestick_patterns
 from backtesting import StrategyRunner
 
@@ -88,6 +88,11 @@ class TestMarketDataModule(unittest.TestCase):
         self.assertTrue(has_split_dividents({'close': [1.0, 1.0], 'adj_close': [1.0, 1.2]}, 0, 1))
         self.assertFalse(has_split_dividents({'close': [100.0, 100.0], 'adj_close': [100.0, 100.4]}, 0, 1))
 
+    def test_odd_data(self):
+        self.assertFalse(odd_data(100, 100))
+        self.assertFalse(odd_data(100, 200))
+        self.assertTrue(odd_data(100, 201))
+
 
 class StrategyRunnerRegressionTest(unittest.TestCase):
     def test_long_strategy(self):
@@ -109,9 +114,24 @@ class StrategyRunnerRegressionTest(unittest.TestCase):
         self.assertAlmostEqual(295.808, sr.balance, 2)
 
 
+class TestStrategyRunner(unittest.TestCase):
+    def test_process_long_position(self):
+        s = StrategyRunner('', [], 0, True, 0.02, txn_amount=100)
+
+        self.assertAlmostEqual(9.65, s._process_long_position(100, 110, 98))
+        self.assertAlmostEqual(-2.349, s._process_long_position(100, 110, 97), 2)
+
+    def test_process_short_position(self):
+        s = StrategyRunner('', [], 0, False, 0.02, txn_amount=100)
+
+        self.assertAlmostEqual(9.65, s._process_short_position(100, 90, 102))
+        self.assertAlmostEqual(-2.349, s._process_short_position(100, 90, 103), 2)
+
+
 if __name__ == '__main__':
     test_support.run_unittest(TestAverageChange)
     test_support.run_unittest(TestFindCandlestickPatterns)
     test_support.run_unittest(EventsRegressionTest)
     test_support.run_unittest(TestMarketDataModule)
     test_support.run_unittest(StrategyRunnerRegressionTest)
+    test_support.run_unittest(TestStrategyRunner)
